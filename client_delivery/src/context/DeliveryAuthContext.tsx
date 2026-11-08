@@ -1,27 +1,25 @@
-import { createContext, useContext, useState, type PropsWithChildren } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, useCallback, useContext, type PropsWithChildren } from 'react';
+import { useAuth, useClerk, useUser } from '../auth/clerkHooks';
 
-export const rememberedEmailKey = 'tdp.delivery.remembered-email';
+type Partner = { id: string; name: string; email: string };
+type Auth = { partner: Partner | null; ready: boolean; getToken: () => Promise<string | null>; logout: () => Promise<void> };
+const Context = createContext<Auth | null>(null);
 
-type Partner = { name: string; email: string };
-const Context = createContext<{ partner: Partner | null; login: (email: string, password: string, remember: boolean) => Promise<void>; logout: () => void } | null>(null);
 export function DeliveryAuthProvider({ children }: PropsWithChildren) {
-  const [partner, setPartner] = useState<Partner | null>(null);
-  async function login(email: string, password: string, remember: boolean) {
-    // Frontend preview of an admin-provided account. No authentication service.
-    if (email.trim().toLowerCase() !== 'delivery@tdp.demo' || password !== 'TdpDemo123!') throw new Error('Use the demo account below. Delivery access is provided by the admin.');
-    try {
-      if (remember) await AsyncStorage.setItem(rememberedEmailKey, email.trim().toLowerCase());
-      else await AsyncStorage.removeItem(rememberedEmailKey);
-    } catch {
-      if (remember) throw new Error('Could not remember your email. Turn off Remember email to continue.');
-    }
-    setPartner({ name: 'Arun Raj', email: 'delivery@tdp.demo' });
-  }
-  return <Context.Provider value={{ partner, login, logout: () => setPartner(null) }}>{children}</Context.Provider>;
+  const { isLoaded, isSignedIn, userId, getToken } = useAuth();
+  const { user } = useUser();
+  const clerk = useClerk();
+  const logout = useCallback(() => clerk.signOut(), [clerk]);
+  const partner = isSignedIn && userId ? {
+    id: userId,
+    name: user?.fullName || user?.firstName || 'Delivery partner',
+    email: user?.primaryEmailAddress?.emailAddress || '',
+  } : null;
+  return <Context.Provider value={{ partner, ready: !!isLoaded, getToken, logout }}>{children}</Context.Provider>;
 }
+
 export function useDeliveryAuth() {
   const value = useContext(Context);
-  if (!value) throw new Error('DeliveryAuthProvider is required');
+  if (!value) throw new Error('DeliveryAuthProvider is required.');
   return value;
 }

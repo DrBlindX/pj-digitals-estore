@@ -23,7 +23,15 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
   const timer = setTimeout(abort, 8000);
   try {
     const response = await fetch(`${getBaseURL()}${path}`, { ...options, signal: controller.signal });
-    if (!response.ok) throw new Error(`Server request failed (${response.status}).`);
+    if (!response.ok) {
+      const body = await response.clone().text();
+      let detail = body.slice(0, 180);
+      try {
+        const payload = JSON.parse(body) as { message?: string; error?: string; errors?: { message?: string }[] };
+        detail = payload.message || payload.error || payload.errors?.[0]?.message || detail;
+      } catch {}
+      throw new Error(`Server request failed (${response.status})${detail ? `: ${detail}` : '.'}`);
+    }
     return response;
   } finally {
     clearTimeout(timer);
