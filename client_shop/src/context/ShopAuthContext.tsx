@@ -1,20 +1,29 @@
-import { createContext, useContext, useState, type PropsWithChildren } from 'react';
+import { createContext, useCallback, useContext, type PropsWithChildren } from 'react';
+import { useAuth, useClerk, useUser } from '../auth/clerkHooks';
 
-export type ShopCategory = 'Electronics' | 'Textiles' | 'Home Appliances' | 'Computer Items' | 'Bakery';
-type Account = { id: string; shopName: string; email: string; category: ShopCategory };
-// Frontend preview only: represents an account provided by the admin.
-const demoAccount: Account = { id: 'demo-vv', shopName: 'VV Electricals', email: 'owner@tdp.demo', category: 'Electronics' };
-const Context = createContext<{ account: Account | null; login: (email: string, password: string) => Promise<void>; logout: () => void } | null>(null);
+export const shopCategories = ['Electronics', 'Textiles', 'Home Appliances', 'Computer Items', 'Bakery'] as const;
+export type ShopCategory = typeof shopCategories[number];
+type Account = { id: string; shopName: string; email: string; category: ShopCategory | null };
+type Auth = { account: Account | null; ready: boolean; getToken: () => Promise<string | null>; logout: () => Promise<void> };
+const Context = createContext<Auth | null>(null);
+
+export function assignedShopCategory(value: unknown): ShopCategory | null {
+  return typeof value === 'string' ? shopCategories.find(category => category.toLowerCase() === value.trim().toLowerCase()) ?? null : null;
+}
 
 export function ShopAuthProvider({ children }: PropsWithChildren) {
-  const [account, setAccount] = useState<Account | null>(null);
-  async function login(email: string, password: string) {
-    if (email.trim().toLowerCase() !== demoAccount.email || password !== 'TdpDemo123!') {
-      throw new Error('Use the demo account below. Shop access is provided by the admin.');
-    }
-    setAccount(demoAccount);
-  }
-  return <Context.Provider value={{ account, login, logout: () => setAccount(null) }}>{children}</Context.Provider>;
+  const { isLoaded, isSignedIn, userId, getToken: clerkGetToken } = useAuth();
+  const { user, isLoaded: userLoaded } = useUser();
+  const clerk = useClerk();
+  const logout = useCallback(async () => { await clerk.signOut(); }, [clerk]);
+  const getToken = useCallback(() => clerkGetToken(), [clerkGetToken]);
+  const metadata = user?.publicMetadata;
+  const shopName = typeof metadata?.shopName === 'string' ? metadata.shopName.trim() : '';
+  const account: Account | null = isSignedIn && userId && userLoaded ? {
+    id: userId, shopName: shopName || 'Your shop', email: user?.primaryEmailAddress?.emailAddress ?? '',
+    category: assignedShopCategory(metadata?.shopCategory),
+  } : null;
+  return <Context.Provider value={{ account, ready: !!isLoaded && !!userLoaded, logout, getToken }}>{children}</Context.Provider>;
 }
 
 export function useShopAuth() {

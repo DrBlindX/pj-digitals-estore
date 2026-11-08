@@ -1,50 +1,37 @@
-import BrandLogo from '../components/BrandLogo';
-import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, useShopUI } from '../components/ShopUI';
-import { useShopAuth } from '../context/ShopAuthContext';
+import { useHostedAuth } from '@clerk/expo/hosted-auth';
+import BrandLogo from '../components/BrandLogo';
+import { useShopUI } from '../components/ShopUI';
 
-export function ShopLoginScreen() { const { C, S } = useShopUI();
-  const { login } = useShopAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [visible, setVisible] = useState(false);
+export function ShopLoginScreen() {
+  const { C, S } = useShopUI();
+  const { startHostedAuth } = useHostedAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  async function submit() {
-    if (busy) return;
-    if (!email.trim() || !password) { setError('Enter your email and password.'); return; }
-    setBusy(true); setError('');
-    try { await login(email.trim(), password); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Unable to sign in.'); }
-    finally { setBusy(false); }
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  async function signIn() {
+    if (pending.current) return;
+    pending.current = true; setBusy(true); setError('');
+    try {
+      const result = await startHostedAuth({ mode: 'sign-in' });
+      if (mounted.current && !result.createdSessionId) setError(result.authSessionResult?.type === 'cancel' || result.authSessionResult?.type === 'dismiss' ? 'Sign-in was cancelled. You can try again.' : 'Sign-in did not finish. Please try again.');
+    } catch (cause) {
+      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Unable to open Clerk sign-in.');
+    } finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
-  return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
-      <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center' }}>
-        <View style={{ marginBottom: 14 }}><BrandLogo size={64} /></View>
-        <Text style={{ color: C.amber, letterSpacing: 3, fontWeight: '800', fontSize: 11 }}>NEARBY · SHOP PARTNER</Text>
-        <Text style={[S.title, { fontSize: 32, marginTop: 18 }]}>Welcome back.</Text>
-        <Text style={S.subtitle}>Your local shop. A world of possibilities.</Text>
-        <View style={[S.card, { padding: 24, borderTopWidth: 4, borderTopColor: C.amber }]}>
-          <Text style={S.section}>Sign in to your shop</Text>
-          <Text style={S.label}>EMAIL ADDRESS</Text>
-          <TextInput accessibilityLabel="Email address" style={S.input} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" editable={!busy} placeholder="Email provided to the admin" placeholderTextColor={C.muted} />
-          <Text style={S.label}>PASSWORD</Text>
-          <TextInput accessibilityLabel="Password" style={S.input} value={password} onChangeText={setPassword} secureTextEntry={!visible} autoCapitalize="none" autoComplete="current-password" editable={!busy} onSubmitEditing={() => { void submit(); }} />
-          <Pressable onPress={() => setVisible(!visible)} accessibilityRole="button"><Text style={[S.small, { marginBottom: 20 }]}>{visible ? 'Hide password' : 'Show password'}</Text></Pressable>
-          {error ? <Text accessibilityRole="alert" style={{ color: C.red, marginBottom: 16, fontSize: 12 }}>{error}</Text> : null}
-          <Button label={busy ? 'Signing in…' : 'Sign in'} onPress={() => { void submit(); }} />
-          <View style={{ backgroundColor: C.tint, padding: 14, borderRadius: 8, marginTop: 18 }}>
-            <Text style={S.name}>Frontend demo · admin-provided account</Text>
-            <Text style={[S.small, { lineHeight: 20 }]}>Email: owner@tdp.demo{'\n'}Password: TdpDemo123!</Text>
-            <Pressable accessibilityRole="button" onPress={() => { setEmail('owner@tdp.demo'); setPassword('TdpDemo123!'); setError(''); }}><Text style={[S.name, { marginTop: 10 }]}>Use demo account</Text></Pressable>
-          </View>
-          <Text style={[S.small, { lineHeight: 19, marginTop: 20 }]}>Shop accounts are provided by the NearBy admin. No public signup. This preview uses demo login only.</Text>
-        </View>
-        <Text style={[S.small, { textAlign: 'center', marginTop: 24 }]}>THODUPUZHA · MUTTOM · KERALA</Text>
+  return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+    <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center', gap: 16 }}>
+      <BrandLogo size={64} /><Text style={S.title}>NearBy Shop</Text><Text style={S.subtitle}>Sign in with your Clerk account.</Text>
+      <View style={[S.card, { padding: 24, gap: 18 }]}>
+        <Text style={S.name}>Welcome back.</Text><Text style={S.small}>Continue to Clerk to sign in and complete any verification steps.</Text>
+        {error ? <Text accessibilityRole="alert" style={{ color: C.red, lineHeight: 20 }}>{error}</Text> : null}
+        <Pressable disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} onPress={() => void signIn()} style={[S.btn, { minHeight: 48, opacity: busy ? 0.6 : 1 }]}>{busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={S.btnText}>Continue with Clerk</Text>}</Pressable>
       </View>
-    </ScrollView>
-  </KeyboardAvoidingView></SafeAreaView>;
+      <Text style={[S.small, { lineHeight: 19 }]}>Shop workspace preview. Clerk sign-in does not grant server shop access.</Text>
+    </View>
+  </ScrollView></SafeAreaView>;
 }

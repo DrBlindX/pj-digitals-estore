@@ -1,2 +1,5 @@
 allowBuilds:
   unrs-resolver: true
+  # These scripts only print dependency funding messages.
+  browser-tabs-lock@1.3.0: false
+  core-js@3.47.0: false

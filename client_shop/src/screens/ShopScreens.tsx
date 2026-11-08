@@ -1,3 +1,4 @@
+import { useShopAuth } from '../context/ShopAuthContext';
 import { isLowStock } from '../utils/stockAlerts';
 import { useLocalGreeting } from '../hooks/useLocalGreeting';
 import { useMemo, useState } from 'react';
@@ -211,8 +212,9 @@ export function Team() { const { C, S } = useShopUI();
  return <Page title="Your team" subtitle="Give staff clear roles to help run the store together."><Card><Text style={S.orderId}>Access at a glance</Text><Text style={[S.small, { lineHeight: 19, marginTop: 6 }]}>Owners manage the whole store. Managers oversee daily work. Staff can help with orders or stock.</Text></Card><View style={[S.row, { justifyContent: 'space-between', marginVertical: 13 }]}><Text style={S.orderId}>Team members ({team.length})</Text><Button label="＋ Invite staff" onPress={() => setShow(true)} /></View><Card>{team.map((person, index) => <View key={person.id} style={[S.productRow, index === team.length - 1 && { borderBottomWidth: 0 }]}><View style={S.avatar}><Text style={S.avatarText}>{person.initials}</Text></View><View style={{ flex: 1 }}><Text style={S.name}>{person.name}</Text><Text style={S.small}>{person.email}</Text></View><View style={{ alignItems: 'flex-end' }}><Badge value={person.role} /><Text style={[S.small, { color: C.green }]}>Active</Text></View></View>)}</Card><TeamModal visible={show} close={() => setShow(false)} /></Page>;
 }
 export function Store() { const { C, S } = useShopUI();
+ const { account } = useShopAuth();
  return <Page title="Shop profile" subtitle="Your shop’s details.">
-  <Section>Store profile</Section><Card>{[['Store name', 'VV Electricals'], ['Category', 'Electronics & home appliances'], ['Location', 'MG Road, Thodupuzha']].map((row, i) => <View key={row[0]} style={[S.row, { justifyContent: 'space-between', paddingVertical: 14, borderBottomColor: C.line, borderBottomWidth: i === 2 ? 0 : 1 }]}><Text style={S.small}>{row[0]}</Text><Text style={[S.name, { fontSize: 11 }]}>{row[1]}</Text></View>)}</Card>
+  <Section>Store profile</Section><Card>{[['Store name', account?.shopName ?? 'Your shop'], ['Category', account?.category ?? 'Not assigned'], ['Email', account?.email || 'Not provided']].map((row, i) => <View key={row[0]} style={[S.row, { justifyContent: 'space-between', paddingVertical: 14, borderBottomColor: C.line, borderBottomWidth: i === 2 ? 0 : 1 }]}><Text style={S.small}>{row[0]}</Text><Text style={[S.name, { fontSize: 11 }]}>{row[1]}</Text></View>)}</Card>
  </Page>;
 }
 
