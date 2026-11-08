@@ -25,6 +25,7 @@ const tabs: { route: string; title: string; icon: IconName }[] = [
   { route: 'products', title: 'Products', icon: 'tag-multiple-outline' },
   { route: 'inventory', title: 'Stock status', icon: 'cube-outline' },
   { route: 'store', title: 'Profile', icon: 'storefront-outline' },
+  { route: 'account', title: 'Account settings', icon: 'account-cog-outline' },
 ];
 
 export default function ShopLayout() {
@@ -57,7 +58,7 @@ function ShopNavigation() {
     </View>
   </SafeAreaView> }}>
     {tabs.map(({ route, title, icon }) => <Tabs.Screen key={route} name={route} options={{ title, tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name={icon} color={color} size={size} /> }} />)}
-  </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').pop() || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logoutError={logoutError} signingOut={signingOut} logout={() => { if (signingOut) return; setSigningOut(true); setLogoutError(''); void logout().then(() => setMenuOpen(false)).catch(() => setLogoutError('Unable to sign out. Please try again.')).finally(() => setSigningOut(false)); }} /><LowStockNotice /></ShopDataProvider>;
+  </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').filter(Boolean)[0] || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logoutError={logoutError} signingOut={signingOut} logout={() => { if (signingOut) return; setSigningOut(true); setLogoutError(''); void logout().then(() => setMenuOpen(false)).catch(() => setLogoutError('Unable to sign out. Please try again.')).finally(() => setSigningOut(false)); }} /><LowStockNotice /></ShopDataProvider>;
 }
 
 function RightMenu({ open, close, shopName, active, navigate, logout, logoutError, signingOut }: { open: boolean; close: () => void; shopName: string; active: string; navigate: (route: string) => void; logout: () => void; logoutError: string; signingOut: boolean }) {

@@ -27,7 +27,7 @@ const createStyles = (C: ShopColors) => StyleSheet.create({
  modalShade: { flex: 1, justifyContent: 'center', padding: 18, backgroundColor: 'rgba(35,28,54,.40)' }, modal: { backgroundColor: C.panel, borderWidth: 1, borderColor: C.line, borderRadius: 14, padding: 16, width: '100%', maxWidth: 460, alignSelf: 'center' },
 });
 
-export function Page({ title, subtitle, children }: PropsWithChildren<{ title: string; subtitle: string }>) { const { C, S } = useShopUI();
+export function Page({ title, subtitle, children, onRefresh, loading = false }: PropsWithChildren<{ title: string; subtitle: string; onRefresh?: () => void; loading?: boolean }>) { const { C, S } = useShopUI();
  const router = useRouter();
  const pathname = usePathname();
  const showBack = pathname !== '/' && pathname !== '/index';
@@ -44,7 +44,7 @@ export function Page({ title, subtitle, children }: PropsWithChildren<{ title: s
    setRefreshing(false); setRefreshed(true); timer.current = null;
   }, 650);
  }, []);
- return <SafeAreaView style={S.page} edges={['left', 'right', 'bottom']}><ScrollView contentContainerStyle={S.content} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" alwaysBounceVertical refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.green} colors={[C.green]} progressBackgroundColor={C.panel} />}>
+ return <SafeAreaView style={S.page} edges={['left', 'right', 'bottom']}><ScrollView contentContainerStyle={S.content} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" alwaysBounceVertical refreshControl={<RefreshControl refreshing={onRefresh ? loading : refreshing} onRefresh={onRefresh ?? refresh} tintColor={C.green} colors={[C.green]} progressBackgroundColor={C.panel} />}>
   {showBack ? <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={goBack} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 10, borderRadius: 10, backgroundColor: C.soft, borderWidth: 1, borderColor: C.line }}><Text style={{ color: C.cyan, fontWeight: '800', fontSize: 12 }}>← Back</Text></Pressable> : null}
   <View style={[S.spread, { gap: 12 }]}>
     <Text style={[S.title, { flex: 1 }]}>{title}</Text>
@@ -55,7 +55,7 @@ export function Page({ title, subtitle, children }: PropsWithChildren<{ title: s
 }
 export function Card({ children, style }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) { const { S } = useShopUI(); return <View style={[S.card, style]}>{children}</View>; }
 export function Section({ children }: PropsWithChildren) { const { S } = useShopUI(); return <Text style={S.section}>{children}</Text>; }
-export function Button({ label, onPress, secondary = false, style }: { label: string; onPress: () => void; secondary?: boolean; style?: StyleProp<ViewStyle> }) { const { S } = useShopUI(); return <Pressable onPress={onPress} style={[secondary ? S.secondary : S.btn, style]}><Text style={secondary ? S.secondaryText : S.btnText}>{label}</Text></Pressable>; }
+export function Button({ label, onPress, secondary = false, style, disabled = false }: { label: string; onPress: () => void; secondary?: boolean; style?: StyleProp<ViewStyle>; disabled?: boolean }) { const { S } = useShopUI(); return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[secondary ? S.secondary : S.btn, style, disabled && { opacity: 0.5 }]}><Text style={secondary ? S.secondaryText : S.btnText}>{label}</Text></Pressable>; }
 const badgeTones = (C: ShopColors): Record<string, [string, string]> => ({
   'Awaiting pickup': [C.amber, C.tint], 'Status pending': [C.muted, C.soft],
   New: [C.cyan, C.tint], Preparing: [C.amber, C.tint], Ready: [C.cyan, C.soft], Completed: [C.green, C.soft],

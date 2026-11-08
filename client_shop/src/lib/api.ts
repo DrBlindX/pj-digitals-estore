@@ -14,16 +14,21 @@ function getBaseURL() {
   return `http://${host || (Platform.OS === 'android' ? '10.0.2.2' : 'localhost')}:3000`;
 }
 
-export async function apiRequest(path: string, options: RequestInit = {}) {
+export async function apiRequest(path: string, options: RequestInit & { timeoutMs?: number } = {}) {
   if (!path.startsWith('/') || path.startsWith('//')) throw new Error('Use a server-relative API path.');
   const controller = new AbortController();
   const abort = () => controller.abort();
   options.signal?.addEventListener('abort', abort);
   if (options.signal?.aborted) controller.abort();
-  const timer = setTimeout(abort, 8000);
+  const { timeoutMs = 8000, ...requestOptions } = options;
+  const timer = setTimeout(abort, timeoutMs);
   try {
-    const response = await fetch(`${getBaseURL()}${path}`, { ...options, signal: controller.signal });
-    if (!response.ok) throw new Error(`Server request failed (${response.status}).`);
+    const response = await fetch(`${getBaseURL()}${path}`, { ...requestOptions, signal: controller.signal });
+    if (!response.ok) {
+      let message = `Server request failed (${response.status}).`;
+      try { const result = await response.json(); if (typeof result.message === 'string') message = result.message; } catch { /* Non-JSON server response. */ }
+      throw new Error(message);
+    }
     return response;
   } finally {
     clearTimeout(timer);

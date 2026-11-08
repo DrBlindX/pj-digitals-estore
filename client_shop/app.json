@@ -20,7 +20,15 @@
           "appleSignIn": false
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow NearBy Shop to select product photos.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "slug": "tdpstore-shop",
     "version": "1.0.0",

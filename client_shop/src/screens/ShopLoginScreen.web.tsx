@@ -13,6 +13,6 @@ export function ShopLoginScreen() {
       rootBox: { width: '100%', maxWidth: '420px', minWidth: 0 }, cardBox: { width: '100%', maxWidth: '100%', minWidth: 0 },
       card: { width: '100%', minWidth: 0, boxSizing: 'border-box' }, formFieldInput: { fontSize: '16px', backgroundColor: C.bg, color: C.text }, footerAction: { display: 'none' },
     } }} />
-    <p style={{ color: C.muted, fontSize: 12, maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>Shop workspace preview. Clerk sign-in does not grant server shop access.</p>
+    <p style={{ color: C.muted, fontSize: 12, maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>Your account must be linked to an approved shop to access shop data.</p>
   </main>;
 }

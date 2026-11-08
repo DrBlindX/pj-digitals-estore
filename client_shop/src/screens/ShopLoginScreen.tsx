@@ -31,7 +31,7 @@ export function ShopLoginScreen() {
         {error ? <Text accessibilityRole="alert" style={{ color: C.red, lineHeight: 20 }}>{error}</Text> : null}
         <Pressable disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} onPress={() => void signIn()} style={[S.btn, { minHeight: 48, opacity: busy ? 0.6 : 1 }]}>{busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={S.btnText}>Continue with Clerk</Text>}</Pressable>
       </View>
-      <Text style={[S.small, { lineHeight: 19 }]}>Shop workspace preview. Clerk sign-in does not grant server shop access.</Text>
+      <Text style={[S.small, { lineHeight: 19 }]}>Your account must be linked to an approved shop to access shop data.</Text>
     </View>
   </ScrollView></SafeAreaView>;
 }
