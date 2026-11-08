@@ -5,13 +5,14 @@ import { useShopAuth } from './ShopAuthContext';
 export type Product = {
   id: string; name: string; category: string; sku: string; price: number;
   stock: number; reorderLevel: number; location: string;
+  description?: string;
 };
 export type OrderStatus = 'New' | 'Preparing' | 'Ready' | 'Completed';
 export type Order = { id: string; customer: string; items: number; total: number; status: OrderStatus; time: string };
 export type DeliveryStatus = 'Preparing' | 'Ready for pickup' | 'Picked up' | 'In transit' | 'Out for delivery' | 'Delivered';
 export type Delivery = { id: string; orderId: string; customer: string; address: string; items: number; total: number; status: DeliveryStatus; driver: string; window: string };
 export type TeamMember = { id: string; name: string; email: string; role: string; initials: string };
-export type NewProduct = Pick<Product, 'name' | 'price' | 'stock'>;
+export type NewProduct = Pick<Product, 'name' | 'description' | 'price' | 'stock'>;
 export type ProductUpdate = Partial<Omit<Product, 'id' | 'category'>>;
 export type NewTeamMember = Pick<TeamMember, 'name' | 'email' | 'role'>;
 

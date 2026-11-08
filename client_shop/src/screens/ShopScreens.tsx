@@ -23,20 +23,21 @@ function OrderRow({ order }: { order: Order }) { const { S } = useShopUI();
 }
 function ProductRow({ product }: { product: Product }) { const { S } = useShopUI();
  const symbol = product.category === 'Textiles' ? '▱' : product.category === 'Computer Items' ? '⌘' : product.category === 'Home Appliances' ? '⌂' : '◇';
- return <View style={S.productRow}><View style={S.glyph}><Text style={S.glyphText}>{symbol}</Text></View><View style={{ flex: 1 }}><Text style={S.name}>{product.name}</Text><Text style={S.small}>{product.sku} · {product.category}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(product.price)}</Text><Text style={S.small}>{product.stock} in stock</Text></View></View>;
+ return <View style={S.productRow}><View style={S.glyph}><Text style={S.glyphText}>{symbol}</Text></View><View style={{ flex: 1 }}><Text style={S.name}>{product.name}</Text><Text style={S.small}>{product.sku} · {product.category}</Text>{product.description ? <Text numberOfLines={2} style={S.small}>{product.description}</Text> : null}</View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(product.price)}</Text><Text style={S.small}>{product.stock} in stock</Text></View></View>;
 }
 function Filter({ items, value, onChange }: { items: string[]; value: string; onChange: (value: string) => void }) { const { S } = useShopUI(); return <View style={S.chips}>{items.map((item) => <Pressable key={item} onPress={() => onChange(item)} style={[S.chip, item === value && S.chipOn]}><Text style={[S.chipText, item === value && S.chipTextOn]}>{item}</Text></Pressable>)}</View>; }
 function ProductModal({ visible, close }: { visible: boolean; close: () => void }) { const { C, S } = useShopUI();
- const { addProduct, shopCategory } = useShop(); const [name, setName] = useState(''); const [price, setPrice] = useState(''); const [stock, setStock] = useState('');
+ const { addProduct, shopCategory } = useShop(); const [name, setName] = useState(''); const [description, setDescription] = useState(''); const [price, setPrice] = useState(''); const [stock, setStock] = useState('');
  const save = () => {
   if (!name.trim() || !price || !Number.isFinite(Number(price)) || Number(price) < 0) return Alert.alert('Add product', 'Enter a product name and valid price.');
   if (!Number.isSafeInteger(Number(stock || 0)) || Number(stock || 0) < 0) return Alert.alert('Add product', 'Stock must be a whole number of zero or more.');
-  try { addProduct({ name: name.trim(), price: Number(price), stock: Number(stock || 0) }); }
+  try { addProduct({ name: name.trim(), description: description.trim(), price: Number(price), stock: Number(stock || 0) }); }
   catch (cause) { return Alert.alert('Add product', cause instanceof Error ? cause.message : 'Unable to add product.'); }
-  setName(''); setPrice(''); setStock(''); close();
+  setName(''); setDescription(''); setPrice(''); setStock(''); close();
  };
  return <Modal visible={visible} transparent animationType="fade" onRequestClose={close}><View style={S.modalShade}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled"><View style={S.modal}><View style={[S.row, { justifyContent: 'space-between' }]}><Text style={S.orderId}>Add a product</Text><Pressable onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
   <Text style={S.label}>PRODUCT NAME</Text><TextInput value={name} onChangeText={setName} placeholder="e.g. Bluetooth speaker" placeholderTextColor={C.muted} style={S.input} />
+  <Text style={S.label}>DESCRIPTION · OPTIONAL</Text><TextInput accessibilityLabel="Product description" value={description} onChangeText={setDescription} multiline maxLength={1000} placeholder="Describe the product, features and specifications" placeholderTextColor={C.muted} textAlignVertical="top" style={[S.input, { minHeight: 100 }]} />
   <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="2,499" placeholderTextColor={C.muted} style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>STARTING STOCK</Text><TextInput value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" placeholderTextColor={C.muted} style={S.input} /></View></View>
   <Text style={[S.small, { marginBottom: 12 }]}>{shopCategory ? `Products are automatically listed under ${shopCategory}.` : 'Shop category unavailable. Contact the admin.'}</Text>
   <Button label="Save product" onPress={save} /><Text style={[S.small, { marginTop: 9 }]}>Demo only. Your item will be stored in memory.</Text></View></ScrollView></View></Modal>;
@@ -59,7 +60,7 @@ export function Home() { const { C, S } = useShopUI();
  const openOrders = orders.filter((o) => o.status !== 'Completed'); const low = products.filter(isLowStock);
  return <Page title={greeting} subtitle="Here is what is happening at your shop today.">
   <LinearGradient colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.banner}><Text style={S.eyebrow}>YOUR STORE AT A GLANCE</Text><Text style={S.bannerTitle}>Your shop, all in one place.</Text><Text style={S.bannerCopy}>View orders, keep products in stock, and help customers find what they need.</Text></LinearGradient>
-  <View style={S.metrics}><Metric label="Sales today" value="₹1,24,800" foot="↑ 12% from yesterday" /><Metric label="Active orders" value={String(openOrders.length).padStart(2, '0')} foot="Orders needing attention" /><Metric label="Products listed" value={String(products.length).padStart(2, '0')} foot="In your catalogue" /></View>
+  <View style={S.metrics}><Metric label="Order value" value={cash(orders.reduce((total, order) => total + order.total, 0))} foot="Current preview orders" /><Metric label="Active orders" value={String(openOrders.length).padStart(2, '0')} foot="Orders needing attention" /><Metric label="Products listed" value={String(products.length).padStart(2, '0')} foot="In your catalogue" /></View>
   <Section>Quick actions</Section>
   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
     <Pressable accessibilityRole="button" onPress={() => setAddingProduct(true)} style={[S.card, { flex: 1, minWidth: 140, padding: 18, gap: 9 }]}>
@@ -69,6 +70,10 @@ export function Home() { const { C, S } = useShopUI();
     <Pressable accessibilityRole="button" onPress={() => router.navigate('/inventory')} style={[S.card, { flex: 1, minWidth: 140, padding: 18, gap: 9 }]}>
       <MaterialCommunityIcons name="package-variant-closed" size={28} color={C.amber} />
       <Text style={S.name}>Update Stock</Text><Text style={[S.small, { lineHeight: 18 }]}>Adjust quantities and manage stock</Text>
+    </Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.navigate('/insights')} style={[S.card, { flex: 1, minWidth: 140, padding: 18, gap: 9 }]}>
+      <MaterialCommunityIcons name="chart-box-outline" size={28} color={C.cyan} />
+      <Text style={S.name}>View Insights</Text><Text style={[S.small, { lineHeight: 18 }]}>Orders, stock and inventory value</Text>
     </Pressable>
   </View>
   <ProductModal visible={addingProduct} close={() => setAddingProduct(false)} />
@@ -111,10 +116,10 @@ export function Products() { const { C, S } = useShopUI();
  const list = useMemo(() => products.filter((p) => (p.name + p.sku + p.category).toLowerCase().includes(query.toLowerCase())), [products, query]);
  return <Page title="Products" subtitle="Add items to your store and keep their details up to date."><View style={[S.row, { marginBottom: 13 }]}><TextInput value={query} onChangeText={setQuery} placeholder="Search products or SKU" placeholderTextColor={C.muted} style={[S.input, { flex: 1, marginBottom: 0, marginRight: 8 }]} /><Button label="＋ Add" onPress={() => setShow(true)} /></View><Card>{list.length ? list.map((p) => <ProductRow key={p.id} product={p} />) : <Text style={S.small}>No products match your search.</Text>}</Card><ProductModal visible={show} close={() => setShow(false)} /></Page>;
 }
-type StockFields = { name: string; sku: string; price: string; stock: string; location: string };
+type StockFields = { description: string; name: string; sku: string; price: string; stock: string; location: string };
 function EditStockModal({ product, visible, close, saveProduct }: { product: Product | null; visible: boolean; close: () => void; saveProduct: (id: string, details: ProductUpdate) => void }) { const { C, S } = useShopUI();
  const { products } = useShop();
- const [fields, setFields] = useState(() => product ? { name: product.name, sku: product.sku, price: String(product.price), stock: String(product.stock), location: product.location } : { name: '', sku: '', price: '', stock: '', location: '' });
+ const [fields, setFields] = useState(() => product ? { name: product.name, description: product.description ?? '', sku: product.sku, price: String(product.price), stock: String(product.stock), location: product.location } : { name: '', description: '', sku: '', price: '', stock: '', location: '' });
  const [error, setError] = useState('');
  const change = (key: keyof StockFields, value: string) => setFields((current) => ({ ...current, [key]: value }));
  const submit = () => {
@@ -126,7 +131,7 @@ function EditStockModal({ product, visible, close, saveProduct }: { product: Pro
   if (!fields.price.trim() || !Number.isFinite(price) || price < 0) return setError('Enter a valid price in rupees.');
   if (!Number.isInteger(stock) || stock < 0) return setError('Stock must be a whole number of zero or more.');
   if (products.some((item) => item.id !== product.id && item.sku.toLowerCase() === sku.toLowerCase())) return setError('That SKU is already used by another product.');
-  saveProduct(product.id, { name: fields.name.trim(), sku, price, stock, location: fields.location.trim() });
+  saveProduct(product.id, { name: fields.name.trim(), description: fields.description.trim(), sku, price, stock, location: fields.location.trim() });
   close();
  };
  if (!product) return null;
@@ -135,6 +140,7 @@ function EditStockModal({ product, visible, close, saveProduct }: { product: Pro
    <View style={S.modal}>
     <View style={[S.row, { justifyContent: 'space-between', marginBottom: 9 }]}><Text style={S.orderId}>Edit stock item</Text><Pressable onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
     <Text style={S.label}>PRODUCT NAME</Text><TextInput value={fields.name} onChangeText={(value) => change('name', value)} style={S.input} />
+    <Text style={S.label}>DESCRIPTION · OPTIONAL</Text><TextInput accessibilityLabel="Edit product description" value={fields.description} onChangeText={(value) => change('description', value)} multiline maxLength={1000} placeholder="Describe the product, features and specifications" placeholderTextColor={C.muted} textAlignVertical="top" style={[S.input, { minHeight: 100 }]} />
     <Text style={S.label}>SKU</Text><TextInput value={fields.sku} onChangeText={(value) => change('sku', value)} autoCapitalize="characters" style={S.input} />
     <Text style={[S.small, { marginBottom: 12 }]}>Shop category: {product.category}</Text>
     <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput value={fields.price} onChangeText={(value) => change('price', value)} keyboardType="decimal-pad" style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>QUANTITY</Text><TextInput value={fields.stock} onChangeText={(value) => change('stock', value)} keyboardType="number-pad" style={S.input} /></View></View>
@@ -176,7 +182,7 @@ export function Inventory() { const { C, S } = useShopUI();
    <View style={[S.row, { alignItems: 'flex-start' }]}>
     <View style={{ flex: 1, paddingRight: 8 }}>
      <Text style={S.name}>{p.name}</Text>
-     <Text style={S.small}>{p.sku} · {p.category}</Text>
+     <Text style={S.small}>{p.sku} · {p.category}</Text>{p.description ? <Text numberOfLines={2} style={S.small}>{p.description}</Text> : null}
      <Text style={[S.small, { marginTop: 6 }]}>{p.location} · Low stock below 6</Text>
      <Text style={[S.small, { color: C.text, marginTop: 5 }]}>{cash(p.price)} each</Text>
      <View style={{ marginTop: 7 }}><Badge value={stockStatus(p)} /></View>

@@ -18,6 +18,7 @@ import { ServerConnection } from '../components/ServerConnection';
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 const tabs: { route: string; title: string; icon: IconName }[] = [
   { route: 'index', title: 'Home', icon: 'view-dashboard-outline' },
+  { route: 'insights', title: 'Insights', icon: 'chart-box-outline' },
   { route: 'orders', title: 'Orders', icon: 'receipt-text-outline' },
   { route: 'deliveries', title: 'Deliveries', icon: 'truck-delivery-outline' },
   { route: 'products', title: 'Products', icon: 'tag-multiple-outline' },
@@ -42,7 +43,7 @@ function ShopNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   if (!account) return <ShopLoginScreen />;
-  return <ShopDataProvider><Tabs screenOptions={{ headerShown: true, tabBarStyle: { display: 'none' }, header: () => <SafeAreaView edges={['top', 'left', 'right']} style={menuStyles.topBar}>
+  return <ShopDataProvider><Tabs backBehavior="history" screenOptions={{ headerShown: true, tabBarStyle: { display: 'none' }, header: () => <SafeAreaView edges={['top', 'left', 'right']} style={menuStyles.topBar}>
     <View style={menuStyles.topContent}>
       <BrandLogo size={40} />
       <View style={{ flex: 1, minWidth: 0 }}><Text style={menuStyles.eyebrow} numberOfLines={1}>NEARBY · SHOP PARTNER</Text><Text style={menuStyles.topShop} numberOfLines={1}>{account.shopName}</Text></View>

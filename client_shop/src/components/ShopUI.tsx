@@ -4,6 +4,7 @@ import type { PropsWithChildren } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useShopTheme, type ShopColors } from '../context/ShopThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { usePathname, useRouter } from 'expo-router';
 
 const createStyles = (C: ShopColors) => StyleSheet.create({
  page: { flex: 1, backgroundColor: C.bg }, content: { padding: 16, paddingBottom: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
@@ -27,6 +28,10 @@ const createStyles = (C: ShopColors) => StyleSheet.create({
 });
 
 export function Page({ title, subtitle, children }: PropsWithChildren<{ title: string; subtitle: string }>) { const { C, S } = useShopUI();
+ const router = useRouter();
+ const pathname = usePathname();
+ const showBack = pathname !== '/' && pathname !== '/index';
+ const goBack = () => { if (router.canGoBack()) router.back(); else router.replace('/'); };
  const [refreshing, setRefreshing] = useState(false);
  const [refreshed, setRefreshed] = useState(false);
  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,6 +45,7 @@ export function Page({ title, subtitle, children }: PropsWithChildren<{ title: s
   }, 650);
  }, []);
  return <SafeAreaView style={S.page} edges={['left', 'right', 'bottom']}><ScrollView contentContainerStyle={S.content} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" alwaysBounceVertical refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={C.green} colors={[C.green]} progressBackgroundColor={C.panel} />}>
+  {showBack ? <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={goBack} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 10, borderRadius: 10, backgroundColor: C.soft, borderWidth: 1, borderColor: C.line }}><Text style={{ color: C.cyan, fontWeight: '800', fontSize: 12 }}>← Back</Text></Pressable> : null}
   <View style={[S.spread, { gap: 12 }]}>
     <Text style={[S.title, { flex: 1 }]}>{title}</Text>
   </View>
