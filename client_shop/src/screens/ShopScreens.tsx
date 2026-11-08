@@ -21,7 +21,7 @@ function deliveryLabel(status?: Delivery['status']) { return status ?? 'Not assi
 function OrderRow({ order }: { order: Order }) { const { S } = useShopUI();
  const { deliveries } = useShop();
  const status = deliveryLabel(deliveries.find(delivery => delivery.orderId === order.id)?.status);
- return <View style={S.dividerRow}><View style={S.row}><View style={{ flex: 1 }}><Text style={S.orderId}>{order.number} · {order.customer}</Text><Text style={S.small}>{order.items} item{order.items === 1 ? '' : 's'} · {order.time}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(order.total)}</Text><View style={{ marginTop: 6 }}><Badge value={status} /></View></View></View></View>;
+ return <View style={S.dividerRow}><View style={S.row}><View style={{ flex: 1 }}><Text style={S.orderId}>{order.number} · {order.customer}</Text><Text style={S.small}>{order.items} item{order.items === 1 ? '' : 's'} · {order.time}</Text>{order.status === 'Placed' ? <Text style={[S.small, { fontWeight: '700' }]}>Awaiting your approval · Open Orders to approve</Text> : null}</View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(order.total)}</Text><View style={{ marginTop: 6 }}><Badge value={status} /></View></View></View></View>;
 }
 function ProductRow({ product }: { product: Product }) { const { S } = useShopUI();
  const symbol = product.category === 'Textiles' ? '▱' : product.category === 'Computer Items' ? '⌘' : product.category === 'Home Appliances' ? '⌂' : '◇';

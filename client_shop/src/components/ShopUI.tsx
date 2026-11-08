@@ -1,5 +1,5 @@
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useRef } from 'react';
 import type { PropsWithChildren } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useShopTheme, type ShopColors } from '../context/ShopThemeContext';
@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { usePathname, useRouter } from 'expo-router';
 
 const createStyles = (C: ShopColors) => StyleSheet.create({
- page: { flex: 1, backgroundColor: C.bg }, content: { padding: 16, paddingBottom: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
+ page: { flex: 1, backgroundColor: C.bg }, content: { flexGrow: 1, padding: 16, paddingBottom: 24, width: '100%', maxWidth: 1120, alignSelf: 'center' },
  brand: { flexDirection: 'row', alignItems: 'center', marginBottom: 18 }, mark: { width: 36, height: 36, borderRadius: 9, backgroundColor: C.soft, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center', marginRight: 11 },
  markText: { color: C.blue, fontSize: 17, fontWeight: '800' }, brandTitle: { color: C.text, fontSize: 12, fontWeight: '800', letterSpacing: .5 }, brandSub: { color: C.muted, fontSize: 11, marginTop: 4 },
  online: { marginLeft: 'auto', backgroundColor: C.soft, paddingVertical: 5, paddingHorizontal: 10, borderRadius: 8 }, onlineText: { color: C.green, fontSize: 10, fontWeight: '800' },
@@ -32,24 +32,26 @@ export function Page({ title, subtitle, children, onRefresh, loading = false }: 
  const pathname = usePathname();
  const showBack = pathname !== '/' && pathname !== '/index';
  const goBack = () => { if (router.canGoBack()) router.back(); else router.replace('/'); };
- const [refreshing, setRefreshing] = useState(false);
- const [refreshed, setRefreshed] = useState(false);
- const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
- useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
- const refresh = useCallback(() => {
-  if (timer.current) return;
-  setRefreshing(true); setRefreshed(false);
-  // Local preview: preserve current products, stock, ads and filters.
-  timer.current = setTimeout(() => {
-   setRefreshing(false); setRefreshed(true); timer.current = null;
-  }, 650);
- }, []);
- return <SafeAreaView style={S.page} edges={['left', 'right', 'bottom']}><ScrollView contentContainerStyle={S.content} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" alwaysBounceVertical refreshControl={<RefreshControl refreshing={onRefresh ? loading : refreshing} onRefresh={onRefresh ?? refresh} tintColor={C.green} colors={[C.green]} progressBackgroundColor={C.panel} />}>
+ const scrollTop = useRef(0);
+ const touchStart = useRef<{ x: number; y: number } | null>(null);
+ const refresh = useCallback(() => { if (!loading) onRefresh?.(); }, [loading, onRefresh]);
+ return <SafeAreaView style={S.page} edges={['left', 'right', 'bottom']}><ScrollView style={{ flex: 1 }} contentContainerStyle={S.content} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="never" alwaysBounceVertical
+  onScroll={event => { scrollTop.current = event.nativeEvent.contentOffset.y; }} scrollEventThrottle={16}
+  onTouchStart={Platform.OS === 'web' && onRefresh ? event => { touchStart.current = scrollTop.current <= 0 && !loading ? { x: event.nativeEvent.pageX, y: event.nativeEvent.pageY } : null; } : undefined}
+  onTouchCancel={() => { touchStart.current = null; }}
+  onTouchEnd={Platform.OS === 'web' && onRefresh ? event => {
+   const start = touchStart.current; touchStart.current = null;
+   if (start && scrollTop.current <= 0) {
+    const distance = event.nativeEvent.pageY - start.y;
+    if (distance >= 80 && Math.abs(event.nativeEvent.pageX - start.x) < distance / 2) refresh();
+   }
+  } : undefined}
+  refreshControl={onRefresh && Platform.OS !== 'web' ? <RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.green} colors={[C.green]} progressBackgroundColor={C.panel} /> : undefined}>
   {showBack ? <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={goBack} style={{ alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 10, borderRadius: 10, backgroundColor: C.soft, borderWidth: 1, borderColor: C.line }}><Text style={{ color: C.cyan, fontWeight: '800', fontSize: 12 }}>← Back</Text></Pressable> : null}
   <View style={[S.spread, { gap: 12 }]}>
     <Text style={[S.title, { flex: 1 }]}>{title}</Text>
   </View>
-  {refreshed ? <Text accessibilityLiveRegion="polite" style={[S.small, { marginTop: 8 }]}>Demo refreshed · your changes are kept. No live data connected.</Text> : null}
+  {onRefresh && Platform.OS === 'web' && loading ? <Text accessibilityLiveRegion="polite" style={[S.small, { marginTop: 8 }]}>Refreshing…</Text> : null}
   <Text style={S.subtitle}>{subtitle}</Text>{children}
  </ScrollView></SafeAreaView>;
 }

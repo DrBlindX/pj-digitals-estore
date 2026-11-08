@@ -62,3 +62,15 @@ export async function getShopOrder(id: string, token: string, signal?: AbortSign
   if (order.id !== id) throw new Error('The server returned a different order.');
   return order;
 }
+
+export async function approveShopOrder(id: string, token: string): Promise<void> {
+  if (!validId(id)) throw new Error('A valid order ID is required.');
+  if (!token.trim()) throw new Error('Please sign in again to approve orders.');
+  const response = await apiRequest(`/api/shop/orders/${encodeURIComponent(id)}/status`, {
+    method: 'PUT', headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderStatus: 'processing' }),
+  });
+  const result = await response.json();
+  if (result?.success !== true) throw new Error(result?.message || 'Unable to approve this order.');
+  if (result.data?._id !== id || result.data?.orderStatus !== 'processing') throw new Error('Approval could not be confirmed. Refresh orders before trying again.');
+}

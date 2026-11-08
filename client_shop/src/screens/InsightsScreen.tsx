@@ -1,3 +1,5 @@
+import { useShopReport } from '../hooks/useShopReport';
+import { parseShopStats, parseSettlements } from '../services/shopReports';
 import OrderConnection from '../components/OrderConnection';
 import InventoryConnection from '../components/InventoryConnection';
 import { Text, View } from 'react-native';
@@ -10,6 +12,8 @@ const money = (value: number) => '₹' + value.toLocaleString('en-IN', { maximum
 
 export default function InsightsScreen() {
   const { products, orders, deliveries, productsLoading, productsError, reloadProducts, ordersLoading, ordersError, reloadOrders } = useShop();
+  const stats = useShopReport('/api/shop/stats?days=30', parseShopStats);
+  const settlements = useShopReport('/api/shop/settlements', parseSettlements);
   const { C, S } = useShopUI();
   const router = useRouter();
   const ordersUnavailable = ordersLoading || !!ordersError;
@@ -24,7 +28,7 @@ export default function InsightsScreen() {
       </View>)}
     </Card>;
   }
-  return <Page title="Insights" subtitle="A clear view of your shop’s orders and inventory." onRefresh={() => { reloadProducts(); reloadOrders(); }} loading={productsLoading || ordersLoading}>
+  return <Page title="Insights" subtitle="A clear view of your shop’s orders and inventory." onRefresh={() => { reloadProducts(); reloadOrders(); stats.reload(); settlements.reload(); }} loading={productsLoading || ordersLoading || stats.loading || settlements.loading}>
     <InventoryConnection /><OrderConnection />
     <Card style={{ backgroundColor: C.soft, marginBottom: 16 }}><Text style={S.name}>Your shop insights</Text><Text style={[S.small, { lineHeight: 18 }]}>Orders, delivery records and inventory come from your shop on the server. Order value excludes cancelled orders and is not a payment or payout total.</Text></Card>
     <View style={S.metrics}>
@@ -33,6 +37,20 @@ export default function InsightsScreen() {
       <Metric label="Inventory value" value={stockUnavailable ? "—" : money(insights.inventoryValue)} foot="Listed price × units on hand" />
       <Metric label="Low-stock products" value={stockUnavailable ? "—" : String(insights.lowStock.length)} foot="Below 6 units, including sold out" />
     </View>
+    <Section>Server statistics · last 30 days</Section>
+    {stats.error ? <Card><Text accessibilityRole="alert" style={S.small}>{stats.error}</Text><Button label="Retry statistics" onPress={stats.reload} /></Card> : stats.loading ? <Text style={S.small}>Loading statistics…</Text> : stats.data ? <View style={S.metrics}>
+      <Metric label="Orders" value={String(stats.data.orders)} foot="Excluding cancelled orders" />
+      <Metric label="Product sales" value={money(stats.data.sales)} foot="Product subtotals, excluding cancelled" />
+      <Metric label="Paid product sales" value={money(stats.data.paidSales)} foot="Confirmed paid orders" />
+      <Metric label="Catalogue products" value={String(stats.data.productCount)} foot="All products in your shop" />
+    </View> : null}
+    <Section>Settlements</Section>
+    <Card>{settlements.loading ? <Text style={S.small}>Loading settlements…</Text> : settlements.error ? <><Text accessibilityRole="alert" style={S.small}>{settlements.error}</Text><Button label="Retry settlements" onPress={settlements.reload} /></> : settlements.data?.length ? settlements.data.map(row => <View key={row.id} style={S.dividerRow}>
+      <Text style={S.name}>{money(row.netPayable)} · {row.status}</Text>
+      <Text style={S.small}>Gross sales: {money(row.grossSales)} · Commission: {money(row.commission)}</Text>
+      {row.periodFrom && row.periodTo ? <Text style={S.small}>{row.periodFrom.slice(0, 10)} – {row.periodTo.slice(0, 10)}</Text> : null}
+      {row.reference ? <Text style={S.small}>Reference: {row.reference}</Text> : null}
+    </View>) : <Text style={S.small}>No settlements returned for your shop.</Text>}</Card>
     <Section>At a glance</Section>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
       {breakdown('Order status', insights.orders, orders.length, ordersUnavailable)}
