@@ -1,10 +1,11 @@
+import BrandLogo from '../components/BrandLogo';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { C, S, Button } from '../components/ShopUI';
+import { Button, useShopUI } from '../components/ShopUI';
 import { useShopAuth } from '../context/ShopAuthContext';
 
-export function ShopLoginScreen() {
+export function ShopLoginScreen() { const { C, S } = useShopUI();
   const { login } = useShopAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +23,8 @@ export function ShopLoginScreen() {
   return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}><KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
       <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center' }}>
-        <Text style={{ color: C.amber, letterSpacing: 3, fontWeight: '800', fontSize: 11 }}>TDP STORE · PARTNER</Text>
+        <View style={{ marginBottom: 14 }}><BrandLogo size={64} /></View>
+        <Text style={{ color: C.amber, letterSpacing: 3, fontWeight: '800', fontSize: 11 }}>NEARBY · SHOP PARTNER</Text>
         <Text style={[S.title, { fontSize: 32, marginTop: 18 }]}>Welcome back.</Text>
         <Text style={S.subtitle}>Your local shop. A world of possibilities.</Text>
         <View style={[S.card, { padding: 24, borderTopWidth: 4, borderTopColor: C.amber }]}>
@@ -39,7 +41,7 @@ export function ShopLoginScreen() {
             <Text style={[S.small, { lineHeight: 20 }]}>Email: owner@tdp.demo{'\n'}Password: TdpDemo123!</Text>
             <Pressable accessibilityRole="button" onPress={() => { setEmail('owner@tdp.demo'); setPassword('TdpDemo123!'); setError(''); }}><Text style={[S.name, { marginTop: 10 }]}>Use demo account</Text></Pressable>
           </View>
-          <Text style={[S.small, { lineHeight: 19, marginTop: 20 }]}>Shop accounts are provided by the TDP Store admin. No public signup. This preview uses demo login only.</Text>
+          <Text style={[S.small, { lineHeight: 19, marginTop: 20 }]}>Shop accounts are provided by the NearBy admin. No public signup. This preview uses demo login only.</Text>
         </View>
         <Text style={[S.small, { textAlign: 'center', marginTop: 24 }]}>THODUPUZHA · MUTTOM · KERALA</Text>
       </View>

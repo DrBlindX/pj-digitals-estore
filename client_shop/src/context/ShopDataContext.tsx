@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type { Dispatch, PropsWithChildren, SetStateAction } from 'react';
+import { useShopAuth } from './ShopAuthContext';
 
 export type Product = {
   id: string; name: string; category: string; sku: string; price: number;
@@ -10,11 +11,12 @@ export type Order = { id: string; customer: string; items: number; total: number
 export type DeliveryStatus = 'Preparing' | 'Ready for pickup' | 'Picked up' | 'In transit' | 'Out for delivery' | 'Delivered';
 export type Delivery = { id: string; orderId: string; customer: string; address: string; items: number; total: number; status: DeliveryStatus; driver: string; window: string };
 export type TeamMember = { id: string; name: string; email: string; role: string; initials: string };
-export type NewProduct = Pick<Product, 'name' | 'category' | 'price' | 'stock'>;
-export type ProductUpdate = Partial<Omit<Product, 'id'>>;
+export type NewProduct = Pick<Product, 'name' | 'price' | 'stock'>;
+export type ProductUpdate = Partial<Omit<Product, 'id' | 'category'>>;
 export type NewTeamMember = Pick<TeamMember, 'name' | 'email' | 'role'>;
 
 type ShopContextValue = {
+  shopCategory: string | null;
   products: Product[]; orders: Order[]; deliveries: Delivery[]; team: TeamMember[];
   isOpen: boolean; setIsOpen: Dispatch<SetStateAction<boolean>>;
   addProduct: (product: NewProduct) => void;
@@ -54,14 +56,19 @@ const initialTeam: TeamMember[] = [
 ];
 
 export function ShopDataProvider({ children }: PropsWithChildren) {
-  const [products, setProducts] = useState(initialProducts);
+  const { account } = useShopAuth();
+  const shopCategory = account?.category ?? null;
+  const [products, setProducts] = useState(() => initialProducts.filter(product => product.category === shopCategory));
   const [orders, setOrders] = useState(initialOrders);
   const [deliveries, setDeliveries] = useState(initialDeliveries);
   const [team, setTeam] = useState(initialTeam);
   const [isOpen, setIsOpen] = useState(true);
-  const addProduct = (product: NewProduct) => setProducts((all) => [{ ...product, id: `p${Date.now()}`, sku: `NEW-${Date.now().toString().slice(-6)}`, reorderLevel: 5, location: 'Main shelf' }, ...all]);
+  const addProduct = useCallback((product: NewProduct) => {
+    if (!shopCategory) throw new Error('Your shop category is unavailable. Contact the admin before adding products.');
+    setProducts((all) => [{ ...product, category: shopCategory, id: `p${Date.now()}`, sku: `NEW-${Date.now().toString().slice(-6)}`, reorderLevel: 5, location: 'Main shelf' }, ...all]);
+  }, [shopCategory]);
   const changeStock = (id: string, amount: number) => setProducts((all) => all.map((product) => product.id === id ? { ...product, stock: Math.max(0, product.stock + amount) } : product));
-  const updateProduct = (id: string, details: ProductUpdate) => setProducts((all) => all.map((product) => product.id === id ? { ...product, ...details } : product));
+  const updateProduct = (id: string, details: ProductUpdate) => setProducts((all) => all.map((product) => product.id === id ? { ...product, ...details, category: product.category } : product));
   const deleteProduct = (id: string) => setProducts((all) => all.filter((product) => product.id !== id));
   const advanceOrder = (id: string) => {
     const next: Partial<Record<OrderStatus, OrderStatus>> = { New: 'Preparing', Preparing: 'Ready', Ready: 'Completed' };
@@ -72,7 +79,7 @@ export function ShopDataProvider({ children }: PropsWithChildren) {
     setDeliveries((all) => all.map((delivery) => delivery.id === id && next[delivery.status] ? { ...delivery, status: next[delivery.status]! } : delivery));
   };
   const addMember = (member: NewTeamMember) => setTeam((all) => [...all, { ...member, id: `t${Date.now()}`, initials: member.name.split(' ').map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase() }]);
-  const value = useMemo<ShopContextValue>(() => ({ products, orders, deliveries, team, isOpen, setIsOpen, addProduct, changeStock, updateProduct, deleteProduct, advanceOrder, advanceDelivery, addMember }), [products, orders, deliveries, team, isOpen]);
+  const value = useMemo<ShopContextValue>(() => ({ shopCategory, products, orders, deliveries, team, isOpen, setIsOpen, addProduct, changeStock, updateProduct, deleteProduct, advanceOrder, advanceDelivery, addMember }), [shopCategory, products, orders, deliveries, team, isOpen, addProduct]);
   return <ShopContext.Provider value={value}>{children}</ShopContext.Provider>;
 }
 

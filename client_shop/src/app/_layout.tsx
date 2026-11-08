@@ -1,3 +1,7 @@
+import LowStockNotice from '../components/LowStockNotice';
+import BrandLogo from '../components/BrandLogo';
+import { ShopThemeProvider, type ShopColors } from '../context/ShopThemeContext';
+import { useShopUI } from '../components/ShopUI';
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,12 +16,11 @@ import { ShopLoginScreen } from '../screens/ShopLoginScreen';
 import { ServerConnection } from '../components/ServerConnection';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
-const tabs: Array<{ route: string; title: string; icon: IconName }> = [
+const tabs: { route: string; title: string; icon: IconName }[] = [
   { route: 'index', title: 'Home', icon: 'view-dashboard-outline' },
   { route: 'orders', title: 'Orders', icon: 'receipt-text-outline' },
   { route: 'deliveries', title: 'Deliveries', icon: 'truck-delivery-outline' },
   { route: 'products', title: 'Products', icon: 'tag-multiple-outline' },
-  { route: 'advertisements', title: 'Advertisements', icon: 'bullhorn-outline' },
   { route: 'inventory', title: 'Stock status', icon: 'cube-outline' },
   { route: 'store', title: 'Profile', icon: 'storefront-outline' },
 ];
@@ -25,13 +28,15 @@ const tabs: Array<{ route: string; title: string; icon: IconName }> = [
 export default function ShopLayout() {
   const [loading, setLoading] = useState(true);
   const finishLoading = useCallback(() => setLoading(false), []);
-  return <ShopAuthProvider><View style={{ flex: 1 }}>
+  return <ShopThemeProvider><ShopAuthProvider><View style={{ flex: 1 }}>
     <View style={{ flex: 1 }} pointerEvents={loading ? 'none' : 'auto'} accessibilityElementsHidden={loading} importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'}><ServerConnection><ShopNavigation /></ServerConnection></View>
     {loading ? <PartnerLoadingScreen onFinish={finishLoading} /> : null}
-  </View></ShopAuthProvider>;
+  </View></ShopAuthProvider></ShopThemeProvider>;
 }
 
 function ShopNavigation() {
+  const { C } = useShopUI();
+  const menuStyles = createMenuStyles(C);
   const { account, logout } = useShopAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
@@ -39,16 +44,18 @@ function ShopNavigation() {
   if (!account) return <ShopLoginScreen />;
   return <ShopDataProvider><Tabs screenOptions={{ headerShown: true, tabBarStyle: { display: 'none' }, header: () => <SafeAreaView edges={['top', 'left', 'right']} style={menuStyles.topBar}>
     <View style={menuStyles.topContent}>
-      <View style={menuStyles.logo}><Text style={menuStyles.logoText}>T</Text></View>
-      <View style={{ flex: 1, minWidth: 0 }}><Text style={menuStyles.eyebrow} numberOfLines={1}>TDP STORE · PARTNER</Text><Text style={menuStyles.topShop} numberOfLines={1}>{account.shopName}</Text></View>
-      <Pressable accessibilityLabel="Open navigation menu" accessibilityRole="button" onPress={() => setMenuOpen(true)} style={menuStyles.menuButton}><MaterialCommunityIcons name="menu" size={25} color="#174E3C" /></Pressable>
+      <BrandLogo size={40} />
+      <View style={{ flex: 1, minWidth: 0 }}><Text style={menuStyles.eyebrow} numberOfLines={1}>NEARBY · SHOP PARTNER</Text><Text style={menuStyles.topShop} numberOfLines={1}>{account.shopName}</Text></View>
+      <Pressable accessibilityLabel="Open navigation menu" accessibilityRole="button" onPress={() => setMenuOpen(true)} style={menuStyles.menuButton}><MaterialCommunityIcons name="menu" size={25} color={C.cyan} /></Pressable>
     </View>
   </SafeAreaView> }}>
     {tabs.map(({ route, title, icon }) => <Tabs.Screen key={route} name={route} options={{ title, tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name={icon} color={color} size={size} /> }} />)}
-  </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').pop() || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logout={() => { setMenuOpen(false); logout(); }} /></ShopDataProvider>;
+  </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').pop() || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logout={() => { setMenuOpen(false); logout(); }} /><LowStockNotice /></ShopDataProvider>;
 }
 
 function RightMenu({ open, close, shopName, active, navigate, logout }: { open: boolean; close: () => void; shopName: string; active: string; navigate: (route: string) => void; logout: () => void }) {
+  const { C, mode, setMode } = useShopUI();
+  const menuStyles = createMenuStyles(C);
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(350, width * 0.88);
   const [slide] = useState(() => new Animated.Value(1));
@@ -63,36 +70,36 @@ function RightMenu({ open, close, shopName, active, navigate, logout }: { open: 
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close navigation menu" accessibilityRole="button" />
       <Animated.View style={[menuStyles.panel, { width: panelWidth, transform: [{ translateX: Animated.multiply(slide, panelWidth) }] }]}>
         <SafeAreaView style={{ flex: 1 }}>
-          <View style={menuStyles.heading}><View style={{ flex: 1 }}><Text style={menuStyles.eyebrow}>TDP STORE · PARTNER</Text><Text style={menuStyles.shop}>{shopName}</Text></View><Pressable accessibilityLabel="Close menu" accessibilityRole="button" onPress={close} style={{ padding: 10 }}><MaterialCommunityIcons name="close" size={24} color="#173D32" /></Pressable></View>
+          <View style={menuStyles.heading}><View style={{ marginRight: 12 }}><BrandLogo size={42} /></View><View style={{ flex: 1 }}><Text style={menuStyles.eyebrow}>NEARBY · SHOP PARTNER</Text><Text style={menuStyles.shop}>{shopName}</Text></View><Pressable accessibilityLabel="Close menu" accessibilityRole="button" onPress={close} style={{ padding: 10 }}><MaterialCommunityIcons name="close" size={24} color={C.text} /></Pressable></View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
             {tabs.map(tab => <Pressable key={tab.route} accessibilityRole="button" accessibilityState={{ selected: active === tab.route }} onPress={() => navigate(tab.route)} style={[menuStyles.item, active === tab.route && menuStyles.selected]}>
-              <MaterialCommunityIcons name={tab.icon} size={22} color={active === tab.route ? '#FFFCF4' : '#174E3C'} />
-              <Text style={[menuStyles.label, active === tab.route && { color: '#FFFCF4' }]}>{tab.title}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={active === tab.route ? '#E1C68A' : '#9A702A'} />
+              <MaterialCommunityIcons name={tab.icon} size={22} color={active === tab.route ? C.onPrimary : C.cyan} />
+              <Text style={[menuStyles.label, active === tab.route && { color: C.onPrimary }]}>{tab.title}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={active === tab.route ? C.onPrimary : C.amber} />
             </Pressable>)}
           </ScrollView>
-          <View style={menuStyles.footer}><Pressable accessibilityRole="button" onPress={logout} style={menuStyles.item}><MaterialCommunityIcons name="logout" color="#A95237" size={22} /><Text style={[menuStyles.label, { color: '#A95237' }]}>Log out</Text></Pressable><Text style={menuStyles.location}>LOCAL ROOTS. NEW POSSIBILITIES.</Text></View>
+          <View style={menuStyles.footer}><Pressable accessibilityRole="switch" accessibilityLabel="Dark mode" accessibilityState={{ checked: mode === 'dark' }} onPress={() => setMode(mode === 'dark' ? 'light' : 'dark')} style={menuStyles.item}><MaterialCommunityIcons name={mode === 'dark' ? 'weather-night' : 'white-balance-sunny'} color={C.cyan} size={22} /><Text style={menuStyles.label}>{mode === 'dark' ? 'Dark mode' : 'Light mode'}</Text><Text style={{ color: C.cyan }}>Switch</Text></Pressable><Pressable accessibilityRole="button" onPress={logout} style={menuStyles.item}><MaterialCommunityIcons name="logout" color={C.red} size={22} /><Text style={[menuStyles.label, { color: C.red }]}>Log out</Text></Pressable><Text style={menuStyles.location}>LOCAL ROOTS. NEW POSSIBILITIES.</Text></View>
         </SafeAreaView>
       </Animated.View>
     </View>
   </Modal>;
 }
 
-const menuStyles = StyleSheet.create({
-  topBar: { backgroundColor: '#FFFCF4', borderBottomWidth: 1, borderBottomColor: '#DBCEAD' },
+const createMenuStyles = (C: ShopColors) => StyleSheet.create({
+  topBar: { backgroundColor: C.panel, borderBottomWidth: 1, borderBottomColor: C.line },
   topContent: { width: '100%', maxWidth: 1120, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 72 },
-  logo: { width: 40, height: 40, borderRadius: 11, backgroundColor: '#E5E9DC', borderWidth: 1, borderColor: '#DBCEAD', alignItems: 'center', justifyContent: 'center' },
-  logoText: { color: '#174E3C', fontWeight: '800', fontSize: 22 },
-  topShop: { color: '#173D32', fontSize: 14, fontWeight: '600', marginTop: 5 },
-  menuButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#F5F0E4' },
-  overlay: { flex: 1, backgroundColor: 'rgba(12,30,24,0.4)', alignItems: 'flex-end' },
-  panel: { height: '100%', backgroundColor: '#FFFCF4', borderLeftWidth: 3, borderLeftColor: '#CFAC65' },
-  heading: { flexDirection: 'row', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderBottomColor: '#DBCEAD' },
-  eyebrow: { fontSize: 10, letterSpacing: 1.3, color: '#9A702A', fontWeight: '800' },
-  shop: { color: '#173D32', fontSize: 20, fontWeight: '700', marginTop: 9 },
+  logo: { width: 40, height: 40, borderRadius: 11, backgroundColor: C.soft, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  logoText: { color: C.cyan, fontWeight: '800', fontSize: 22 },
+  topShop: { color: C.text, fontSize: 14, fontWeight: '600', marginTop: 5 },
+  menuButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: C.bg },
+  overlay: { flex: 1, backgroundColor: 'rgba(35,28,54,0.4)', alignItems: 'flex-end' },
+  panel: { height: '100%', backgroundColor: C.panel, borderLeftWidth: 3, borderLeftColor: C.line },
+  heading: { flexDirection: 'row', alignItems: 'center', padding: 22, borderBottomWidth: 1, borderBottomColor: C.line },
+  eyebrow: { fontSize: 10, letterSpacing: 1.3, color: C.amber, fontWeight: '800' },
+  shop: { color: C.text, fontSize: 20, fontWeight: '700', marginTop: 9 },
   item: { flexDirection: 'row', gap: 14, paddingHorizontal: 16, paddingVertical: 16, alignItems: 'center', borderRadius: 12 },
-  selected: { backgroundColor: '#174E3C' },
-  label: { flex: 1, fontSize: 14, color: '#173D32', fontWeight: '600' },
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#DBCEAD' },
-  location: { color: '#697568', fontSize: 9, letterSpacing: 1, textAlign: 'center', marginTop: 15, marginBottom: 10 },
+  selected: { backgroundColor: C.blue },
+  label: { flex: 1, fontSize: 14, color: C.text, fontWeight: '600' },
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: C.line },
+  location: { color: C.muted, fontSize: 9, letterSpacing: 1, textAlign: 'center', marginTop: 15, marginBottom: 10 },
 });

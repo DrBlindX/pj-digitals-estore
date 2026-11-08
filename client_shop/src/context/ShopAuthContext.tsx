@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react';
 
-type Account = { id: string; shopName: string; email: string };
+export type ShopCategory = 'Electronics' | 'Textiles' | 'Home Appliances' | 'Computer Items' | 'Bakery';
+type Account = { id: string; shopName: string; email: string; category: ShopCategory };
 // Frontend preview only: represents an account provided by the admin.
-const demoAccount: Account = { id: 'demo-vv', shopName: 'VV Electricals', email: 'owner@tdp.demo' };
+const demoAccount: Account = { id: 'demo-vv', shopName: 'VV Electricals', email: 'owner@tdp.demo', category: 'Electronics' };
 const Context = createContext<{ account: Account | null; login: (email: string, password: string) => Promise<void>; logout: () => void } | null>(null);
 
 export function ShopAuthProvider({ children }: PropsWithChildren) {

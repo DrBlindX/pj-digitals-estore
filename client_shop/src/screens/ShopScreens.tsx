@@ -1,9 +1,11 @@
+import { isLowStock } from '../utils/stockAlerts';
+import { useLocalGreeting } from '../hooks/useLocalGreeting';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Alert, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Badge, Button, Card, Metric, Page, Section, C, S } from '../components/ShopUI';
+import { Badge, Button, Card, Metric, Page, Section, useShopUI } from '../components/ShopUI';
 import { useShop } from '../context/ShopDataContext';
 import type { Delivery, Order, Product, ProductUpdate } from '../context/ShopDataContext';
 
@@ -14,42 +16,49 @@ function deliveryLabel(status?: Delivery['status']) {
  if (status === 'Picked up' || status === 'In transit') return 'Picked up';
  return status;
 }
-function OrderRow({ order }: { order: Order }) {
+function OrderRow({ order }: { order: Order }) { const { S } = useShopUI();
  const { deliveries } = useShop();
  const status = deliveryLabel(deliveries.find(delivery => delivery.orderId === order.id)?.status);
  return <View style={S.dividerRow}><View style={S.row}><View style={{ flex: 1 }}><Text style={S.orderId}>{order.id} · {order.customer}</Text><Text style={S.small}>{order.items} item{order.items === 1 ? '' : 's'} · {order.time}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(order.total)}</Text><View style={{ marginTop: 6 }}><Badge value={status} /></View></View></View></View>;
 }
-function ProductRow({ product }: { product: Product }) {
+function ProductRow({ product }: { product: Product }) { const { S } = useShopUI();
  const symbol = product.category === 'Textiles' ? '▱' : product.category === 'Computer Items' ? '⌘' : product.category === 'Home Appliances' ? '⌂' : '◇';
  return <View style={S.productRow}><View style={S.glyph}><Text style={S.glyphText}>{symbol}</Text></View><View style={{ flex: 1 }}><Text style={S.name}>{product.name}</Text><Text style={S.small}>{product.sku} · {product.category}</Text></View><View style={{ alignItems: 'flex-end' }}><Text style={S.price}>{cash(product.price)}</Text><Text style={S.small}>{product.stock} in stock</Text></View></View>;
 }
-function Filter({ items, value, onChange }: { items: string[]; value: string; onChange: (value: string) => void }) { return <View style={S.chips}>{items.map((item) => <Pressable key={item} onPress={() => onChange(item)} style={[S.chip, item === value && S.chipOn]}><Text style={[S.chipText, item === value && S.chipTextOn]}>{item}</Text></Pressable>)}</View>; }
-function ProductModal({ visible, close }: { visible: boolean; close: () => void }) {
- const { addProduct } = useShop(); const [name, setName] = useState(''); const [price, setPrice] = useState(''); const [category, setCategory] = useState(''); const [stock, setStock] = useState('');
- const save = () => { if (!name.trim() || !price || !Number.isFinite(Number(price))) return Alert.alert('Add product', 'Enter a product name and valid price.'); addProduct({ name: name.trim(), price: Number(price), category: category.trim() || 'General', stock: Math.max(0, Number(stock) || 0) }); setName(''); setPrice(''); setCategory(''); setStock(''); close(); };
+function Filter({ items, value, onChange }: { items: string[]; value: string; onChange: (value: string) => void }) { const { S } = useShopUI(); return <View style={S.chips}>{items.map((item) => <Pressable key={item} onPress={() => onChange(item)} style={[S.chip, item === value && S.chipOn]}><Text style={[S.chipText, item === value && S.chipTextOn]}>{item}</Text></Pressable>)}</View>; }
+function ProductModal({ visible, close }: { visible: boolean; close: () => void }) { const { C, S } = useShopUI();
+ const { addProduct, shopCategory } = useShop(); const [name, setName] = useState(''); const [price, setPrice] = useState(''); const [stock, setStock] = useState('');
+ const save = () => {
+  if (!name.trim() || !price || !Number.isFinite(Number(price)) || Number(price) < 0) return Alert.alert('Add product', 'Enter a product name and valid price.');
+  if (!Number.isSafeInteger(Number(stock || 0)) || Number(stock || 0) < 0) return Alert.alert('Add product', 'Stock must be a whole number of zero or more.');
+  try { addProduct({ name: name.trim(), price: Number(price), stock: Number(stock || 0) }); }
+  catch (cause) { return Alert.alert('Add product', cause instanceof Error ? cause.message : 'Unable to add product.'); }
+  setName(''); setPrice(''); setStock(''); close();
+ };
  return <Modal visible={visible} transparent animationType="fade" onRequestClose={close}><View style={S.modalShade}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled"><View style={S.modal}><View style={[S.row, { justifyContent: 'space-between' }]}><Text style={S.orderId}>Add a product</Text><Pressable onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
-  <Text style={S.label}>PRODUCT NAME</Text><TextInput value={name} onChangeText={setName} placeholder="e.g. Bluetooth speaker" placeholderTextColor="#697568" style={S.input} />
-  <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="2,499" placeholderTextColor="#697568" style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>STARTING STOCK</Text><TextInput value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" placeholderTextColor="#697568" style={S.input} /></View></View>
-  <Text style={S.label}>CATEGORY</Text><TextInput value={category} onChangeText={setCategory} placeholder="Electronics, textiles..." placeholderTextColor="#697568" style={S.input} />
+  <Text style={S.label}>PRODUCT NAME</Text><TextInput value={name} onChangeText={setName} placeholder="e.g. Bluetooth speaker" placeholderTextColor={C.muted} style={S.input} />
+  <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="2,499" placeholderTextColor={C.muted} style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>STARTING STOCK</Text><TextInput value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" placeholderTextColor={C.muted} style={S.input} /></View></View>
+  <Text style={[S.small, { marginBottom: 12 }]}>{shopCategory ? `Products are automatically listed under ${shopCategory}.` : 'Shop category unavailable. Contact the admin.'}</Text>
   <Button label="Save product" onPress={save} /><Text style={[S.small, { marginTop: 9 }]}>Demo only. Your item will be stored in memory.</Text></View></ScrollView></View></Modal>;
 }
-function TeamModal({ visible, close }: { visible: boolean; close: () => void }) {
+function TeamModal({ visible, close }: { visible: boolean; close: () => void }) { const { C, S } = useShopUI();
  const { addMember } = useShop(); const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [role, setRole] = useState('Order staff');
  const save = () => { if (!name.trim() || !email.trim()) return Alert.alert('Invite staff', 'Enter a name and email.'); addMember({ name: name.trim(), email: email.trim(), role }); setName(''); setEmail(''); close(); };
  return <Modal visible={visible} transparent animationType="fade" onRequestClose={close}><View style={S.modalShade}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled"><View style={S.modal}><View style={[S.row, { justifyContent: 'space-between' }]}><Text style={S.orderId}>Add a team member</Text><Pressable onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
- <Text style={S.label}>FULL NAME</Text><TextInput value={name} onChangeText={setName} placeholder="Team member name" placeholderTextColor="#697568" style={S.input} />
- <Text style={S.label}>EMAIL</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="name@example.com" placeholderTextColor="#697568" style={S.input} />
+ <Text style={S.label}>FULL NAME</Text><TextInput value={name} onChangeText={setName} placeholder="Team member name" placeholderTextColor={C.muted} style={S.input} />
+ <Text style={S.label}>EMAIL</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="name@example.com" placeholderTextColor={C.muted} style={S.input} />
  <Text style={S.label}>ROLE</Text><Filter items={['Store manager', 'Order staff', 'Inventory staff']} value={role} onChange={setRole} />
  <Button label="Add to team" onPress={save} /><Text style={[S.small, { marginTop: 9 }]}>Demo only. An invitation will not be sent yet.</Text></View></ScrollView></View></Modal>;
 }
 
-export function Home() {
+export function Home() { const { C, S } = useShopUI();
+ const greeting = useLocalGreeting();
  const { orders, products } = useShop();
  const router = useRouter();
  const [addingProduct, setAddingProduct] = useState(false);
- const openOrders = orders.filter((o) => o.status !== 'Completed'); const low = products.filter((p) => p.stock <= 4);
- return <Page title="Good morning" subtitle="Here is what is happening at your shop today.">
-  <LinearGradient colors={['#277052', '#174E3C', '#10382A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.banner}><Text style={S.eyebrow}>YOUR STORE AT A GLANCE</Text><Text style={S.bannerTitle}>Your shop, all in one place.</Text><Text style={S.bannerCopy}>View orders, keep products in stock, and help customers find what they need.</Text></LinearGradient>
+ const openOrders = orders.filter((o) => o.status !== 'Completed'); const low = products.filter(isLowStock);
+ return <Page title={greeting} subtitle="Here is what is happening at your shop today.">
+  <LinearGradient colors={C.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={S.banner}><Text style={S.eyebrow}>YOUR STORE AT A GLANCE</Text><Text style={S.bannerTitle}>Your shop, all in one place.</Text><Text style={S.bannerCopy}>View orders, keep products in stock, and help customers find what they need.</Text></LinearGradient>
   <View style={S.metrics}><Metric label="Sales today" value="₹1,24,800" foot="↑ 12% from yesterday" /><Metric label="Active orders" value={String(openOrders.length).padStart(2, '0')} foot="Orders needing attention" /><Metric label="Products listed" value={String(products.length).padStart(2, '0')} foot="In your catalogue" /></View>
   <Section>Quick actions</Section>
   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
@@ -64,16 +73,16 @@ export function Home() {
   </View>
   <ProductModal visible={addingProduct} close={() => setAddingProduct(false)} />
   <Section>Active orders</Section><Card>{openOrders.slice(0, 3).map((order) => <OrderRow key={order.id} order={order} />)}</Card>
-  <Section>Stock to check · {low.length} items</Section><Card>{low.length ? low.map((product) => <ProductRow key={product.id} product={product} />) : <Text style={S.small}>Everything is well stocked.</Text>}</Card>
+  <Section>Low stock · {low.length} items</Section><Card>{low.length ? low.map((product) => <ProductRow key={product.id} product={product} />) : <Text style={S.small}>Everything is well stocked.</Text>}</Card>
   <Text style={[S.small, { textAlign: 'center', marginTop: 18 }]}>Front-end preview · Sample data only</Text>
  </Page>;
 }
-export function Orders() {
+export function Orders() { const { S } = useShopUI();
  const { orders, deliveries } = useShop(); const [filter, setFilter] = useState('All');
  const visible = filter === 'All' ? orders : orders.filter(order => deliveryLabel(deliveries.find(delivery => delivery.orderId === order.id)?.status) === filter);
  return <Page title="Orders" subtitle="Track pickup and delivery for your shop’s orders."><Filter items={['All', 'Awaiting pickup', 'Picked up', 'Out for delivery', 'Delivered']} value={filter} onChange={setFilter} /><Card>{visible.length ? visible.map((o) => <OrderRow key={o.id} order={o} />) : <Text style={S.small}>No orders in this group.</Text>}</Card><Text style={[S.small, { marginTop: 12 }]}>View only · Sample pickup and delivery statuses.</Text></Page>;
 }
-function DeliveryCard({ delivery }: { delivery: Delivery }) {
+function DeliveryCard({ delivery }: { delivery: Delivery }) { const { C, S } = useShopUI();
  const steps = ['Pickup', 'Delivery'];
  const current: Record<Delivery['status'], number> = { Preparing: -1, 'Ready for pickup': -1, 'Picked up': 0, 'In transit': 0, 'Out for delivery': 0, Delivered: 1 };
  const currentStep = current[delivery.status];
@@ -85,7 +94,7 @@ function DeliveryCard({ delivery }: { delivery: Delivery }) {
  </Card>;
 }
 
-export function Deliveries() {
+export function Deliveries() { const { S } = useShopUI();
  const { deliveries } = useShop();
  const [filter, setFilter] = useState('All');
  const shown = deliveries.filter((d) => filter === 'All' || (filter === 'Delivered' ? d.status === 'Delivered' : d.status !== 'Delivered'));
@@ -97,15 +106,15 @@ export function Deliveries() {
   <Text style={[S.small, { marginTop: 6 }]}>View only · Sample delivery statuses.</Text>
  </Page>;
 }
-export function Products() {
+export function Products() { const { C, S } = useShopUI();
  const { products } = useShop(); const [query, setQuery] = useState(''); const [show, setShow] = useState(false);
  const list = useMemo(() => products.filter((p) => (p.name + p.sku + p.category).toLowerCase().includes(query.toLowerCase())), [products, query]);
- return <Page title="Products" subtitle="Add items to your store and keep their details up to date."><View style={[S.row, { marginBottom: 13 }]}><TextInput value={query} onChangeText={setQuery} placeholder="Search products or SKU" placeholderTextColor="#697568" style={[S.input, { flex: 1, marginBottom: 0, marginRight: 8 }]} /><Button label="＋ Add" onPress={() => setShow(true)} /></View><Card>{list.length ? list.map((p) => <ProductRow key={p.id} product={p} />) : <Text style={S.small}>No products match your search.</Text>}</Card><ProductModal visible={show} close={() => setShow(false)} /></Page>;
+ return <Page title="Products" subtitle="Add items to your store and keep their details up to date."><View style={[S.row, { marginBottom: 13 }]}><TextInput value={query} onChangeText={setQuery} placeholder="Search products or SKU" placeholderTextColor={C.muted} style={[S.input, { flex: 1, marginBottom: 0, marginRight: 8 }]} /><Button label="＋ Add" onPress={() => setShow(true)} /></View><Card>{list.length ? list.map((p) => <ProductRow key={p.id} product={p} />) : <Text style={S.small}>No products match your search.</Text>}</Card><ProductModal visible={show} close={() => setShow(false)} /></Page>;
 }
-type StockFields = { name: string; sku: string; category: string; price: string; stock: string; reorderLevel: string; location: string };
-function EditStockModal({ product, visible, close, saveProduct }: { product: Product | null; visible: boolean; close: () => void; saveProduct: (id: string, details: ProductUpdate) => void }) {
+type StockFields = { name: string; sku: string; price: string; stock: string; location: string };
+function EditStockModal({ product, visible, close, saveProduct }: { product: Product | null; visible: boolean; close: () => void; saveProduct: (id: string, details: ProductUpdate) => void }) { const { C, S } = useShopUI();
  const { products } = useShop();
- const [fields, setFields] = useState(() => product ? { name: product.name, sku: product.sku, category: product.category, price: String(product.price), stock: String(product.stock), reorderLevel: String(product.reorderLevel), location: product.location } : { name: '', sku: '', category: '', price: '', stock: '', reorderLevel: '', location: '' });
+ const [fields, setFields] = useState(() => product ? { name: product.name, sku: product.sku, price: String(product.price), stock: String(product.stock), location: product.location } : { name: '', sku: '', price: '', stock: '', location: '' });
  const [error, setError] = useState('');
  const change = (key: keyof StockFields, value: string) => setFields((current) => ({ ...current, [key]: value }));
  const submit = () => {
@@ -113,12 +122,11 @@ function EditStockModal({ product, visible, close, saveProduct }: { product: Pro
   const sku = fields.sku.trim().toUpperCase();
   const price = Number(fields.price);
   const stock = Number(fields.stock);
-  const reorderLevel = Number(fields.reorderLevel);
-  if (!fields.name.trim() || !sku || !fields.category.trim() || !fields.location.trim()) return setError('Fill in the name, SKU, category, and shelf location.');
+  if (!fields.name.trim() || !sku || !fields.location.trim()) return setError('Fill in the name, SKU, and shelf location.');
   if (!fields.price.trim() || !Number.isFinite(price) || price < 0) return setError('Enter a valid price in rupees.');
-  if (!Number.isInteger(stock) || stock < 0 || !Number.isInteger(reorderLevel) || reorderLevel < 0) return setError('Stock and reorder level must be whole numbers of zero or more.');
+  if (!Number.isInteger(stock) || stock < 0) return setError('Stock must be a whole number of zero or more.');
   if (products.some((item) => item.id !== product.id && item.sku.toLowerCase() === sku.toLowerCase())) return setError('That SKU is already used by another product.');
-  saveProduct(product.id, { name: fields.name.trim(), sku, category: fields.category.trim(), price, stock, reorderLevel, location: fields.location.trim() });
+  saveProduct(product.id, { name: fields.name.trim(), sku, price, stock, location: fields.location.trim() });
   close();
  };
  if (!product) return null;
@@ -127,9 +135,10 @@ function EditStockModal({ product, visible, close, saveProduct }: { product: Pro
    <View style={S.modal}>
     <View style={[S.row, { justifyContent: 'space-between', marginBottom: 9 }]}><Text style={S.orderId}>Edit stock item</Text><Pressable onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
     <Text style={S.label}>PRODUCT NAME</Text><TextInput value={fields.name} onChangeText={(value) => change('name', value)} style={S.input} />
-    <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>SKU</Text><TextInput value={fields.sku} onChangeText={(value) => change('sku', value)} autoCapitalize="characters" style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>CATEGORY</Text><TextInput value={fields.category} onChangeText={(value) => change('category', value)} style={S.input} /></View></View>
+    <Text style={S.label}>SKU</Text><TextInput value={fields.sku} onChangeText={(value) => change('sku', value)} autoCapitalize="characters" style={S.input} />
+    <Text style={[S.small, { marginBottom: 12 }]}>Shop category: {product.category}</Text>
     <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput value={fields.price} onChangeText={(value) => change('price', value)} keyboardType="decimal-pad" style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>QUANTITY</Text><TextInput value={fields.stock} onChangeText={(value) => change('stock', value)} keyboardType="number-pad" style={S.input} /></View></View>
-    <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>REORDER LEVEL</Text><TextInput value={fields.reorderLevel} onChangeText={(value) => change('reorderLevel', value)} keyboardType="number-pad" style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>SHELF LOCATION</Text><TextInput value={fields.location} onChangeText={(value) => change('location', value)} style={S.input} /></View></View>
+    <Text style={S.label}>SHELF LOCATION</Text><TextInput value={fields.location} onChangeText={(value) => change('location', value)} style={S.input} /><Text style={[S.small, { marginBottom: 12 }]}>Low-stock alerts start below 6 units.</Text>
     {error ? <Text style={{ color: C.red, fontSize: 12, marginBottom: 11 }}>{error}</Text> : null}
     <View style={S.row}><Button label="Cancel" secondary onPress={close} style={{ flex: 1, marginRight: 6 }} /><Button label="Save changes" onPress={submit} style={{ flex: 1, marginLeft: 6 }} /></View>
    </View>
@@ -137,7 +146,7 @@ function EditStockModal({ product, visible, close, saveProduct }: { product: Pro
  </Modal>;
 }
 
-function DeleteStockModal({ product, visible, cancel, confirm }: { product: Product | null; visible: boolean; cancel: () => void; confirm: () => void }) {
+function DeleteStockModal({ product, visible, cancel, confirm }: { product: Product | null; visible: boolean; cancel: () => void; confirm: () => void }) { const { S } = useShopUI();
  if (!product) return null;
  return <Modal visible={visible} transparent animationType="fade" onRequestClose={cancel}>
   <View style={S.modalShade}><View style={S.modal}>
@@ -147,20 +156,20 @@ function DeleteStockModal({ product, visible, cancel, confirm }: { product: Prod
   </View></View>
  </Modal>;
 }
-export function Inventory() {
+export function Inventory() { const { C, S } = useShopUI();
  const { products, changeStock, updateProduct, deleteProduct } = useShop();
  const [filter, setFilter] = useState('All stock');
  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
- const stockStatus = (product: Product): string => product.stock === 0 ? 'Out of stock' : product.stock <= product.reorderLevel ? 'Low stock' : 'In stock';
+ const stockStatus = (product: Product): string => product.stock === 0 ? 'Out of stock' : isLowStock(product) ? 'Low stock' : 'In stock';
  const counts = {
   all: products.length,
-  low: products.filter((p) => stockStatus(p) === 'Low stock').length,
+  low: products.filter(isLowStock).length,
   out: products.filter((p) => stockStatus(p) === 'Out of stock').length,
  };
- const list = products.filter((p) => filter === 'All stock' || stockStatus(p) === filter);
+ const list = products.filter((p) => filter === 'All stock' || (filter === 'Low stock' ? isLowStock(p) : stockStatus(p) === filter));
  return <Page title="Stock status" subtitle="See stock levels, product details, and what needs reordering.">
-  <View style={S.metrics}><Metric label="Products tracked" value={String(counts.all)} foot="In this store" /><Metric label="Low stock" value={String(counts.low)} foot="At or below reorder level" /><Metric label="Out of stock" value={String(counts.out)} foot="Unavailable to customers" /></View>
+  <View style={S.metrics}><Metric label="Products tracked" value={String(counts.all)} foot="In this store" /><Metric label="Low stock" value={String(counts.low)} foot="Fewer than 6 units, including sold out" /><Metric label="Out of stock" value={String(counts.out)} foot="Unavailable to customers" /></View>
   <Section>Inventory details</Section>
   <Filter items={['All stock', 'In stock', 'Low stock', 'Out of stock']} value={filter} onChange={setFilter} />
   <Card>{list.length ? list.map((p, index) => <View key={p.id} style={[S.dividerRow, index === list.length - 1 && { borderBottomWidth: 0 }]}>
@@ -168,7 +177,7 @@ export function Inventory() {
     <View style={{ flex: 1, paddingRight: 8 }}>
      <Text style={S.name}>{p.name}</Text>
      <Text style={S.small}>{p.sku} · {p.category}</Text>
-     <Text style={[S.small, { marginTop: 6 }]}>{p.location} · Reorder at {p.reorderLevel}</Text>
+     <Text style={[S.small, { marginTop: 6 }]}>{p.location} · Low stock below 6</Text>
      <Text style={[S.small, { color: C.text, marginTop: 5 }]}>{cash(p.price)} each</Text>
      <View style={{ marginTop: 7 }}><Badge value={stockStatus(p)} /></View>
     </View>
@@ -183,7 +192,7 @@ export function Inventory() {
    </View>
    <View style={[S.row, { marginTop: 12 }]}>
     <Button label="Edit details" secondary onPress={() => setEditingProduct(p)} style={{ flex: 1, marginRight: 6 }} />
-    <Button label="Delete" secondary onPress={() => setDeletingProduct(p)} style={{ flex: 1, marginLeft: 6, borderColor: '#E2C7CC', backgroundColor: '#F5E6E9' }} />
+    <Button label="Delete" secondary onPress={() => setDeletingProduct(p)} style={{ flex: 1, marginLeft: 6, borderColor: C.red, backgroundColor: C.soft }} />
    </View>
   </View>) : <Text style={S.small}>No products match this stock status.</Text>}</Card>
   <Text style={[S.small, { marginTop: 12 }]}>Inventory changes are temporary until the backend is connected.</Text>
@@ -191,11 +200,11 @@ export function Inventory() {
   <DeleteStockModal product={deletingProduct} visible={!!deletingProduct} cancel={() => setDeletingProduct(null)} confirm={() => { if (deletingProduct) deleteProduct(deletingProduct.id); setDeletingProduct(null); }} />
  </Page>;
 }
-export function Team() {
+export function Team() { const { C, S } = useShopUI();
  const { team } = useShop(); const [show, setShow] = useState(false);
  return <Page title="Your team" subtitle="Give staff clear roles to help run the store together."><Card><Text style={S.orderId}>Access at a glance</Text><Text style={[S.small, { lineHeight: 19, marginTop: 6 }]}>Owners manage the whole store. Managers oversee daily work. Staff can help with orders or stock.</Text></Card><View style={[S.row, { justifyContent: 'space-between', marginVertical: 13 }]}><Text style={S.orderId}>Team members ({team.length})</Text><Button label="＋ Invite staff" onPress={() => setShow(true)} /></View><Card>{team.map((person, index) => <View key={person.id} style={[S.productRow, index === team.length - 1 && { borderBottomWidth: 0 }]}><View style={S.avatar}><Text style={S.avatarText}>{person.initials}</Text></View><View style={{ flex: 1 }}><Text style={S.name}>{person.name}</Text><Text style={S.small}>{person.email}</Text></View><View style={{ alignItems: 'flex-end' }}><Badge value={person.role} /><Text style={[S.small, { color: C.green }]}>Active</Text></View></View>)}</Card><TeamModal visible={show} close={() => setShow(false)} /></Page>;
 }
-export function Store() {
+export function Store() { const { C, S } = useShopUI();
  return <Page title="Shop profile" subtitle="Your shop’s details.">
   <Section>Store profile</Section><Card>{[['Store name', 'VV Electricals'], ['Category', 'Electronics & home appliances'], ['Location', 'MG Road, Thodupuzha']].map((row, i) => <View key={row[0]} style={[S.row, { justifyContent: 'space-between', paddingVertical: 14, borderBottomColor: C.line, borderBottomWidth: i === 2 ? 0 : 1 }]}><Text style={S.small}>{row[0]}</Text><Text style={[S.name, { fontSize: 11 }]}>{row[1]}</Text></View>)}</Card>
  </Page>;
