@@ -25,7 +25,7 @@ export function ServerConnection({ children }: PropsWithChildren) {
     const listener = AppState.addEventListener('change', state => { if (state === 'active') void refresh(); });
     return () => { active = false; controller?.abort(); clearInterval(timer); listener.remove(); };
   }, [attempt]);
-  const label = status === 'connected' ? 'Server connected · Preview data' : status === 'checking' ? 'Connecting to server…' : 'Server unavailable · Preview data';
+  const label = status === 'connected' ? 'Server connected' : status === 'checking' ? 'Connecting to server…' : 'Server unavailable';
   return <View style={styles.root}>
     <View style={styles.content}>{children}</View>
     <View style={styles.bar}>

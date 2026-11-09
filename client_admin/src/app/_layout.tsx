@@ -1,3 +1,4 @@
+import AdminToast from '../components/AdminToast';
 import AdminClerkProvider from '../auth/AdminClerkProvider';
 import AdminAccess from '../auth/AdminAccess';
 import { useCallback, useState } from 'react';
@@ -20,6 +21,7 @@ function AdminRoot() {
   const finishLoading = useCallback(() => setLoading(false), []);
   return <SafeAreaProvider><StatusBar style={mode === 'dark' ? 'light' : 'dark'} /><View style={{ flex: 1 }}>
     <View style={{ flex: 1 }} pointerEvents={loading ? 'none' : 'auto'} accessibilityElementsHidden={loading} importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'}><ServerConnection><AdminAccess><Stack screenOptions={{ headerShown: false, title: 'NearBy Admin' }} /></AdminAccess></ServerConnection></View>
+    <AdminToast />
     {loading ? <AdminLoadingScreen onFinish={finishLoading} /> : null}
   </View></SafeAreaProvider>;
 }

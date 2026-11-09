@@ -51,3 +51,20 @@ export async function readAdminOrders(page: number, id: string | null, token: st
  const orders: AdminOrder[] = result.data.map(parseAdminOrder);
  return { orders: [...new Map(orders.map(order => [order.id, order])).values()], pages: result.pagination.pages as number };
 }
+
+export const adminOrderTransitions: Record<string, readonly string[]> = {
+ placed: ['processing', 'shipping', 'delivered', 'cancelled'],
+ processing: ['shipping', 'delivered', 'cancelled'],
+ shipping: ['delivered', 'cancelled'],
+};
+export async function updateAdminOrderStatus(id: string, status: string, token: string): Promise<void> {
+ if (!validId(id) || !['processing', 'shipping', 'delivered', 'cancelled'].includes(status)) throw new Error('Invalid order status request.');
+ if (!token.trim()) throw new Error('Please sign in again.');
+ const response = await apiRequest(`/api/orders/${id}/status`, {
+  method: 'PUT', headers: { Authorization: `Bearer ${token}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+  body: JSON.stringify({ orderStatus: status }),
+ });
+ const result = await response.json();
+ if (result?.success !== true) throw new Error(result?.message || 'Unable to update order status.');
+ if (result.data?._id !== id || result.data?.orderStatus !== status) throw new Error('Status update could not be confirmed. Refresh the order before trying again.');
+}

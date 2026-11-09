@@ -1,3 +1,4 @@
+import AdminOrderStatus from './AdminOrderStatus';
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useAuth } from '../auth/clerkHooks';
@@ -37,6 +38,7 @@ export default function AdminOrders() {
    <Text style={{ color: p.primaryText }}>₹{order.total.toLocaleString('en-IN')} · {order.status}</Text>
    <Text style={{ color: p.muted }}>{order.payment} · Delivery: {order.deliveryStatus}</Text>
    {id ? <>
+    <AdminOrderStatus key={`${order.id}:${order.status}`} id={order.id} status={order.status} onReload={() => setAttempt(value => value + 1)} />
     <Text style={{ color: p.text, fontWeight: '700' }}>Items</Text>
     {order.items.map((item, index) => <View key={index}><Text style={{ color: p.text }}>{item.name}</Text><Text style={{ color: p.muted }}>{item.quantity} × ₹{item.price.toLocaleString('en-IN')}{item.size ? ` · Size ${item.size}` : ''}</Text></View>)}
     <Text style={{ color: p.text, fontWeight: '700' }}>Delivery address</Text><Text style={{ color: p.muted }}>{order.address || 'Address unavailable'}</Text>

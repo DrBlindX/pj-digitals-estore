@@ -1,3 +1,4 @@
+import { useRouter, type Href } from 'expo-router';
 import { useClerk } from '../auth/clerkHooks';
 import { useEffect, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
@@ -7,6 +8,7 @@ import { useAdminTheme } from '../context/AdminTheme';
 
 export default function AdminMenu({ open, onClose, items, active, onSelect }: { open: boolean; onClose: () => void; items: string[]; active: string; onSelect: (item: string) => void }) {
   const clerk = useClerk();
+  const router = useRouter();
   const [logoutError, setLogoutError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const { palette: p, mode, toggle } = useAdminTheme();
@@ -33,6 +35,7 @@ export default function AdminMenu({ open, onClose, items, active, onSelect }: { 
               <Text style={{ flex: 1, color: active === item ? p.onPrimary : p.text, fontSize: 14, fontWeight: '700' }}>{item}</Text><Text style={{ color: active === item ? p.onPrimary : p.primaryText }}>›</Text>
             </Pressable>)}
           </ScrollView>
+          <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push('/account' as Href); }} style={{ marginHorizontal: 16, marginTop: 8, padding: 16, borderRadius: 12, backgroundColor: p.soft }}><Text style={{ color: p.primaryText, fontWeight: '700' }}>Account settings</Text></Pressable>
           <Pressable accessibilityRole="switch" accessibilityLabel="Dark mode" accessibilityState={{ checked: mode === 'dark' }} onPress={toggle} style={{ margin: 16, padding: 16, minHeight: 48, borderRadius: 12, backgroundColor: p.soft }}><Text style={{ color: p.primaryText, fontWeight: '700' }}>{mode === 'dark' ? '☀ Switch to light mode' : '☾ Switch to dark mode'}</Text></Pressable>
           <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => { if (signingOut) return; setSigningOut(true); setLogoutError(''); void clerk.signOut().then(onClose).catch(() => setLogoutError('Unable to sign out. Please try again.')).finally(() => setSigningOut(false)); }} style={{ padding: 16, marginHorizontal: 16 }}><Text style={{ color: p.terracotta, fontWeight: '700' }}>{signingOut ? 'Signing out…' : 'Sign out'}</Text></Pressable>
           {logoutError ? <Text accessibilityRole="alert" style={{ color: p.terracotta, paddingHorizontal: 16 }}>{logoutError}</Text> : null}
