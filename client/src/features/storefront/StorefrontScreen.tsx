@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createCustomerOrder } from '@/services/orders';
 import BrandLogo from '@/components/BrandLogo';
 import { notify } from '@/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
@@ -38,7 +39,7 @@ import { useCustomerOrders } from './hooks/useCustomerOrders';
 export default function StorefrontScreen() {
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === 'web' && width >= 900;
-  const { customer, signOut } = useCustomerAuth();
+  const { customer, signOut, getToken } = useCustomerAuth();
   const { checkout } = useLocalSearchParams<{ checkout?: string }>();
   const [tab, setTabState] = useState<Tab>('Home');
   function setTab(next: Tab) {
@@ -91,7 +92,9 @@ export default function StorefrontScreen() {
   const orderFeed = useCustomerOrders(tab === 'Orders' || tab === 'History', refreshVersion);
   const { orders } = orderFeed;
   const [selectedOrder, setSelectedOrder] = useState<{ id: string; owner: string } | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash on delivery');
+  const orderLock = useRef(false);
+  const [placingOrder, setPlacingOrder] = useState(false);
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [addressReturnTab, setAddressReturnTab] = useState<Tab>('Home');
@@ -198,7 +201,25 @@ export default function StorefrontScreen() {
     } finally { if (request === detailRequest.current) setDetailLoading(false); }
   }
   function toggleFavorite(id: string): void { const saved = favorites.includes(id); setFavorites((items) => items.includes(id) ? items.filter((savedId) => savedId !== id) : [...items, id]); notify(saved ? 'Removed from wishlist.' : 'Added to wishlist.', 'success'); }
-  function placeDemoOrder(): void { notify('Ordering and payment APIs are not available yet. Your saved cart has not been changed.'); }
+  async function placeOrder() {
+    if (orderLock.current || placingOrder) return;
+    if (!customer || !deliveryAddress || !cartCount || !basket.synced || basket.busy) { notify('Sign in, select an address and wait for your saved cart before placing an order.', 'error'); return; }
+    if (paymentMethod !== 'Cash on delivery') return;
+    orderLock.current = true; setPlacingOrder(true);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Please sign in again.');
+      const result = await createCustomerOrder({ paymentMethod: 'cod', shippingAddress: {
+        fullName: deliveryAddress.name, phone: deliveryAddress.phone, street: deliveryAddress.address,
+        city: deliveryAddress.location, state: 'Kerala', zipCode: deliveryAddress.pincode, country: 'India', location: deliveryAddress.location,
+      } }, token);
+      basket.reload(); orderFeed.reload(); setTab('Orders');
+      notify(`${result.orders.length === 1 ? 'Order placed' : 'Orders placed'}. Pay cash on delivery.`, 'success');
+    } catch (cause) {
+      basket.reload(); setTab('Orders'); orderFeed.reload();
+      notify(`${cause instanceof Error ? cause.message : 'Unable to confirm order.'} Check My orders before trying again.`, 'error');
+    } finally { orderLock.current = false; setPlacingOrder(false); }
+  }
 
   function renderHome() {
     return <>
@@ -459,7 +480,7 @@ export default function StorefrontScreen() {
         {!catalogue.error && !catalogue.loading && !products.length ? <Text style={styles.formNote}>No products have been published yet.</Text> : null}
         {products.length ? <Text style={styles.formNote}>Shop and delivery coverage have not been supplied for these products.</Text> : null}
         <Text accessibilityLabel={`${pageTitle} page`} style={styles.srOnly}>{pageTitle}</Text>
-        {selectedProduct ? renderDetails() : tab === 'Home' ? renderHome() : tab === 'Shop' ? renderShop() : tab === 'Supermarket' ? renderSupermarket() : tab === 'Shops' ? renderStores() : tab === 'Cart' ? renderCart() : tab === 'Addresses' ? <AddressBook addresses={addresses} selectedId={selectedAddressId} location={deliveryLocation} onSave={(address) => { setAddresses((current) => [...current, address]); useAddress(address.id); }} onSelect={useAddress} onRemove={(id) => { setAddresses((current) => current.filter((address) => address.id !== id)); if (selectedAddressId === id) setSelectedAddressId(null); }} onBack={() => setTab(addressReturnTab)} /> : tab === 'Payment' && customer ? <PaymentSection address={deliveryAddress} onManageAddress={() => { setAddressReturnTab('Payment'); setTab('Addresses'); }} subtotal={subtotal} itemCount={cartCount} location={deliveryLocation} method={paymentMethod} onChange={setPaymentMethod} onBack={() => setTab('Cart')} onConfirm={placeDemoOrder} canOrder={false} /> : tab === 'Favorites' ? renderFavorites() : tab === 'Orders' ? renderOrders() : tab === 'History' ? renderHistory() : tab === 'Account' ? renderAccount() : tab === 'Customer Care' ? renderCustomerCare() : tab === 'Shop request' ? renderPartnerRequest('shop') : tab === 'Delivery request' ? renderPartnerRequest('delivery') : renderMore()}
+        {selectedProduct ? renderDetails() : tab === 'Home' ? renderHome() : tab === 'Shop' ? renderShop() : tab === 'Supermarket' ? renderSupermarket() : tab === 'Shops' ? renderStores() : tab === 'Cart' ? renderCart() : tab === 'Addresses' ? <AddressBook addresses={addresses} selectedId={selectedAddressId} location={deliveryLocation} onSave={(address) => { setAddresses((current) => [...current, address]); useAddress(address.id); }} onSelect={useAddress} onRemove={(id) => { setAddresses((current) => current.filter((address) => address.id !== id)); if (selectedAddressId === id) setSelectedAddressId(null); }} onBack={() => setTab(addressReturnTab)} /> : tab === 'Payment' && customer ? <PaymentSection address={deliveryAddress} onManageAddress={() => { setAddressReturnTab('Payment'); setTab('Addresses'); }} subtotal={subtotal} itemCount={cartCount} location={deliveryLocation} method={paymentMethod} onChange={setPaymentMethod} onBack={() => setTab('Cart')} onConfirm={() => void placeOrder()} canOrder={paymentMethod === 'Cash on delivery' && basket.synced && !basket.busy} busy={placingOrder} /> : tab === 'Favorites' ? renderFavorites() : tab === 'Orders' ? renderOrders() : tab === 'History' ? renderHistory() : tab === 'Account' ? renderAccount() : tab === 'Customer Care' ? renderCustomerCare() : tab === 'Shop request' ? renderPartnerRequest('shop') : tab === 'Delivery request' ? renderPartnerRequest('delivery') : renderMore()}
         {desktop ? <View style={{ marginTop: 56, paddingTop: 30, paddingBottom: 12, borderTopWidth: 1, borderColor: palette.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32 }}>
           <View style={{ maxWidth: 360 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><BrandLogo size={48} /><Text style={styles.brand}>NearBy</Text></View><Text style={[styles.pageIntro, { marginTop: 12 }]}>Your town. Your shops. Your doorstep.</Text><Text style={styles.muted}>Shopping local in {deliveryLocation}.</Text></View>
           <View style={{ gap: 14 }}><Text style={styles.storeName}>Explore</Text>{([{ label: 'Supermarket', target: 'Supermarket' }, { label: 'Shop by name', target: 'Shops' }, { label: 'Wishlist', target: 'Favorites' }] as const).map(link => <TouchableOpacity key={link.target} accessibilityRole="button" onPress={() => { setSelectedProduct(null); setTab(link.target); pageScroll.current?.scrollTo({ y: 0, animated: false }); }}><Text style={styles.changeLink}>{link.label}</Text></TouchableOpacity>)}</View>

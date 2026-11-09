@@ -74,3 +74,15 @@ export async function approveShopOrder(id: string, token: string): Promise<void>
   if (result?.success !== true) throw new Error(result?.message || 'Unable to approve this order.');
   if (result.data?._id !== id || result.data?.orderStatus !== 'processing') throw new Error('Approval could not be confirmed. Refresh orders before trying again.');
 }
+
+export async function assignShopDelivery(orderId: string, driverId: string, token: string): Promise<void> {
+  if (!validId(orderId) || !validId(driverId)) throw new Error('Enter a valid delivery-partner ID.');
+  if (!token.trim()) throw new Error('Please sign in again.');
+  const response = await apiRequest('/api/shop/deliveries/assign', {
+    method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId, driverId }),
+  });
+  const result = await response.json();
+  if (result?.success !== true) throw new Error(result?.message || 'Unable to assign delivery.');
+  if (result.data?.order !== orderId || result.data?.driver !== driverId || result.data?.status !== 'assigned') throw new Error('Assignment could not be confirmed. Check the latest order details before trying again.');
+}

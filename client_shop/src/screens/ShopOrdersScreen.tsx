@@ -1,9 +1,9 @@
 import { useShop } from '../context/ShopDataContext';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { Button, Card, Page, useShopUI } from '../components/ShopUI';
 import { useShopAuth } from '../context/ShopAuthContext';
-import { approveShopOrder, getShopOrder, type ShopOrder } from '../services/shopOrders';
+import { approveShopOrder, assignShopDelivery, getShopOrder, type ShopOrder } from '../services/shopOrders';
 
 const money = (value: number) => '₹' + value.toLocaleString('en-IN', { maximumFractionDigits: 2 });
 
@@ -17,6 +17,7 @@ export default function ShopOrdersScreen() {
   const approvalLock = useRef(false);
   const [approving, setApproving] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [driverId, setDriverId] = useState('');
   const [assignmentInfo, setAssignmentInfo] = useState<string | null>(null);
   const [approvalMessage, setApprovalMessage] = useState('');
   const [approvalError, setApprovalError] = useState('');
@@ -57,6 +58,23 @@ export default function ShopOrdersScreen() {
       setResult(null); setAttempt(value => value + 1);
     }
   }
+  async function assign(order: ShopOrder) {
+    if (approvalLock.current || order.status !== 'processing') return;
+    const driver = driverId.trim();
+    if (!/^[a-f\d]{24}$/i.test(driver)) { setApprovalError('Enter the approved delivery partner’s 24-character ID.'); return; }
+    approvalLock.current = true; setApproving(order.id); setApprovalError(''); setApprovalMessage('');
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Please sign in again.');
+      await assignShopDelivery(order.id, driver, token);
+      setApprovalMessage(`Delivery assigned for order ${order.number}.`);
+      setAssignmentInfo(null); setDriverId('');
+    } catch (cause) {
+      setApprovalError(`${cause instanceof Error ? cause.message : 'Unable to assign delivery.'} Check the refreshed order before retrying.`);
+    } finally {
+      approvalLock.current = false; setApproving(null); reloadOrders(); setResult(null); setAttempt(value => value + 1);
+    }
+  }
   return <Page title={selectedId ? 'Order details' : 'Orders'} subtitle="Review and approve new orders received by your shop." onRefresh={reload} loading={!current}>
     {approvalMessage ? <Text accessibilityLiveRegion="polite" style={[S.small, { color: C.green, marginBottom: 12 }]}>{approvalMessage}</Text> : null}
     {approvalError ? <Text accessibilityRole="alert" style={[S.small, { color: C.red, marginBottom: 12 }]}>{approvalError}</Text> : null}
@@ -74,12 +92,13 @@ export default function ShopOrdersScreen() {
           </> : <Button label="Approve order" disabled={!!approving} onPress={() => { setConfirmation(order.id); setApprovalMessage(''); setApprovalError(''); }} />}
         </View> : null}
         {order.status === 'processing' && (!order.delivery || ['failed', 'rejected', 'cancelled'].includes(order.delivery.status)) ? <View style={{ gap: 10, marginTop: 12 }}>
-          <Button secondary label="Assign to delivery" disabled={!!approving} onPress={() => setAssignmentInfo(order.id)} />
+          <Button secondary label="Assign to delivery" disabled={!!approving} onPress={() => { setAssignmentInfo(order.id); setDriverId(''); setApprovalError(''); setApprovalMessage(''); }} />
           {assignmentInfo === order.id ? <View style={{ backgroundColor: C.soft, borderRadius: 8, padding: 12, gap: 8 }}>
             <Text style={S.name}>Delivery assignment</Text>
-            <Text style={[S.small, { lineHeight: 19 }]}>This order is approved. Delivery assignment is currently managed by the admin. Contact the admin with order number {order.number} to arrange a delivery partner.</Text>
-            <Text style={[S.small, { lineHeight: 19 }]}>Only the admin can assign a delivery partner at this time. No assignment has been sent.</Text>
-            <Button secondary label="Close" onPress={() => setAssignmentInfo(null)} />
+            <Text style={[S.small, { lineHeight: 19 }]}>Enter the delivery partner ID provided by your admin. The partner must be approved and available.</Text>
+            <TextInput accessibilityLabel="Delivery partner ID" value={driverId} onChangeText={setDriverId} editable={!approving} autoCapitalize="none" autoCorrect={false} maxLength={24} placeholder="Delivery partner ID" placeholderTextColor={C.muted} style={S.input} />
+            <Button label={approving === order.id ? 'Assigning…' : 'Confirm assignment'} disabled={!!approving || !/^[a-f\d]{24}$/i.test(driverId.trim())} onPress={() => void assign(order)} />
+            <Button secondary disabled={!!approving} label="Cancel" onPress={() => setAssignmentInfo(null)} />
           </View> : null}
         </View> : null}
         {order.status === 'placed' ? <Text style={[S.small, { marginTop: 10 }]}>Approve this order before arranging delivery.</Text> : order.delivery && !['failed', 'rejected', 'cancelled'].includes(order.delivery.status) ? <Text style={[S.small, { marginTop: 10 }]}>Delivery partner: {order.delivery.driver}</Text> : null}

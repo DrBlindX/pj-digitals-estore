@@ -24,7 +24,7 @@ export type Product = {
 };
 export type Order = {
   deliveryAddress?: { id: string; name: string; phone: string; address: string; pincode: string; location: DeliveryLocation };
-  paymentMethod?: 'UPI' | 'Card';
+  paymentMethod?: 'UPI' | 'Card' | 'Cash on delivery';
   paymentStatus?: string;
   id: string;
   date: string;

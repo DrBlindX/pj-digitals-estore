@@ -4,26 +4,27 @@ import { useStoreTheme } from '../ThemeContext';
 import { money, type Palette } from '../data/catalog';
 import type { DeliveryAddress } from './AddressBook';
 
-export type PaymentMethod = 'UPI' | 'Card';
+export type PaymentMethod = 'UPI' | 'Card' | 'Cash on delivery';
 const methods: { name: PaymentMethod; icon: string; description: string }[] = [
+  { name: 'Cash on delivery', icon: '₹', description: 'Pay in cash when your order arrives' },
   { name: 'UPI', icon: '↗', description: 'Google Pay, PhonePe or another UPI app' },
   { name: 'Card', icon: '▣', description: 'Credit or debit card' },
 ];
 
-export default function PaymentSection({ subtotal, itemCount, location, address, onManageAddress, method, onChange, onBack, onConfirm, canOrder }: { subtotal: number; itemCount: number; location: string; address?: DeliveryAddress; onManageAddress: () => void; method: PaymentMethod; onChange: (method: PaymentMethod) => void; onBack: () => void; onConfirm: () => void; canOrder: boolean }) {
+export default function PaymentSection({ subtotal, itemCount, location, address, onManageAddress, method, onChange, onBack, onConfirm, canOrder, busy = false }: { subtotal: number; itemCount: number; location: string; address?: DeliveryAddress; onManageAddress: () => void; method: PaymentMethod; onChange: (method: PaymentMethod) => void; onBack: () => void; onConfirm: () => void; canOrder: boolean; busy?: boolean }) {
   const { palette } = useStoreTheme();
   const styles = createStyles(palette);
   const delivery = subtotal >= 999 ? 0 : 99;
   return <View>
     <Pressable onPress={onBack} accessibilityRole="button" style={styles.back}><Text style={styles.backText}>← Back to cart</Text></Pressable>
     <Text style={styles.title}>Payment</Text><Text style={styles.subtitle}>Choose how you would like to pay.</Text>
-    <View style={styles.demo}><Text style={styles.demoTitle}>DEMO CHECKOUT</Text><Text style={styles.copy}>No money will be charged. Online payment options are previews.</Text></View>
+    <View style={styles.demo}><Text style={styles.demoTitle}>CASH ON DELIVERY</Text><Text style={styles.copy}>Place your order now and pay cash at delivery. Online payments are not available in this checkout yet.</Text></View>
     <Text style={styles.label}>DELIVERING TO</Text><Text style={styles.location}>{location}</Text>
 
     {address ? <><Text style={styles.methodName}>{address.name}</Text><Text style={styles.copy}>{address.address} · {address.pincode}</Text><Text style={styles.copy}>{address.phone}</Text></> : <Text style={styles.copy}>Add a delivery address to continue.</Text>}
     <Pressable onPress={onManageAddress} accessibilityRole="button" style={styles.back}><Text style={styles.backText}>{address ? 'Change address →' : 'Add address →'}</Text></Pressable>
     <Text style={styles.label}>PAYMENT METHOD</Text>
-    {methods.map((option) => <Pressable key={option.name} onPress={() => onChange(option.name)} style={[styles.method, method === option.name && styles.selected]} accessibilityRole="radio" accessibilityState={{ checked: method === option.name }}>
+    {methods.map((option) => <Pressable key={option.name} disabled={busy} onPress={() => onChange(option.name)} style={[styles.method, method === option.name && styles.selected]} accessibilityRole="radio" accessibilityState={{ checked: method === option.name }}>
       <View style={styles.icon}><Text style={styles.iconText}>{option.icon}</Text></View>
       <View style={styles.methodCopy}><Text style={styles.methodName}>{option.name}</Text><Text style={styles.copy}>{option.description}</Text></View>
       <Text style={styles.radio}>{method === option.name ? '●' : '○'}</Text>
@@ -31,11 +32,11 @@ export default function PaymentSection({ subtotal, itemCount, location, address,
     <View style={styles.summary}>
       <Text style={styles.summaryTitle}>Order summary · {itemCount} {itemCount === 1 ? 'item' : 'items'}</Text>
       <View style={styles.row}><Text style={styles.copy}>Subtotal</Text><Text style={styles.value}>{money(subtotal)}</Text></View>
-      <View style={styles.row}><Text style={styles.copy}>Delivery</Text><Text style={styles.value}>{delivery ? money(delivery) : 'FREE'}</Text></View>
-      <View style={styles.totalRow}><Text style={styles.total}>Total</Text><Text style={styles.total}>{money(subtotal + delivery)}</Text></View>
-      {!canOrder ? <Text style={styles.error}>Online ordering and payment are not connected yet. Your saved cart will remain available.</Text> : null}
-      <Pressable disabled={!canOrder || itemCount === 0 || !address} onPress={onConfirm} accessibilityRole="button" accessibilityState={{ disabled: !canOrder || itemCount === 0 || !address }} style={[styles.button, (!canOrder || itemCount === 0 || !address) && { opacity: 0.5 }]}><Text style={styles.buttonText}>Confirm demo order · {money(subtotal + delivery)}</Text></Pressable>
-      <Text style={styles.note}>Demo payment only. No card details or UPI authorisation are collected.</Text>
+      <View style={styles.row}><Text style={styles.copy}>Estimated delivery</Text><Text style={styles.value}>{delivery ? money(delivery) : 'FREE'}</Text></View>
+      <View style={styles.totalRow}><Text style={styles.total}>Estimated total</Text><Text style={styles.total}>{money(subtotal + delivery)}</Text></View>
+      {method !== 'Cash on delivery' ? <Text style={styles.error}>Online payment is not connected yet. Choose Cash on delivery to place your order.</Text> : null}
+      <Pressable disabled={!canOrder || busy || itemCount === 0 || !address} onPress={onConfirm} accessibilityRole="button" accessibilityState={{ disabled: !canOrder || busy || itemCount === 0 || !address }} style={[styles.button, (!canOrder || busy || itemCount === 0 || !address) && { opacity: 0.5 }]}><Text style={styles.buttonText}>{busy ? 'Placing order…' : 'Place cash-on-delivery order'}</Text></Pressable>
+      <Text style={styles.note}>Final charges are calculated by the server. Cash on delivery is subject to server availability.</Text>
     </View>
   </View>;
 }
