@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/clerkHooks';
 import BrandLogo from '../components/BrandLogo';
@@ -25,8 +25,8 @@ export default function DeliveryLoginScreen() {
   }
 
   return <SafeAreaView style={s.screen}>
-    <View style={s.content}>
-      <BrandLogo size={68} />
+    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24 }}><View style={s.content}>
+      <BrandLogo size={64} />
       <Text style={s.brand}>NEARBY · DELIVERY</Text>
       <Text style={s.title}>Welcome back.</Text>
       <Text style={s.copy}>Sign in to your delivery account with Clerk.</Text>
@@ -34,16 +34,16 @@ export default function DeliveryLoginScreen() {
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isLoaded || busy, busy }} disabled={!isLoaded || busy} onPress={() => void signIn()} style={[s.button, (!isLoaded || busy) && { opacity: 0.65 }]}>
         {busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={s.buttonText}>{isLoaded ? 'Continue with Clerk' : 'Loading secure sign-in…'}</Text>}
       </Pressable>
-    </View>
+    </View></ScrollView>
   </SafeAreaView>;
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, justifyContent: 'center', backgroundColor: C.bg, padding: 24 },
-  content: { width: '100%', maxWidth: 420, alignSelf: 'center', alignItems: 'center', gap: 14, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderTopWidth: 4, borderTopColor: C.primary, borderRadius: 16, padding: 28 },
-  brand: { color: C.primaryText, fontSize: 11, fontWeight: '800', letterSpacing: 2, marginTop: 4 },
-  title: { color: C.text, fontSize: 30, fontWeight: '800', marginTop: 6 },
-  copy: { color: C.muted, fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 8 },
+  screen: { flex: 1, backgroundColor: C.bg },
+  content: { width: '100%', maxWidth: 440, alignSelf: 'center', gap: 20, backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: 16, padding: 24 },
+  brand: { color: C.primaryText, fontSize: 11, fontWeight: '600', letterSpacing: 1.2 },
+  title: { color: C.text, fontSize: 30, fontWeight: '600', letterSpacing: -0.8, lineHeight: 38 },
+  copy: { color: C.muted, fontSize: 14, lineHeight: 22 },
   error: { color: C.red, textAlign: 'center', lineHeight: 20 },
   button: { width: '100%', minHeight: 48, backgroundColor: C.primary, borderRadius: 10, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   buttonText: { color: C.onPrimary, fontWeight: '800' },

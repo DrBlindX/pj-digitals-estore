@@ -1,25 +1,11 @@
 import { SignIn } from '@clerk/react';
-import { StyleSheet, Text, View } from 'react-native';
 import BrandLogo from '../components/BrandLogo';
 import { C } from '../theme';
-
 export default function DeliveryLoginScreen() {
-  return <View style={s.screen}>
-    <View style={s.brand}>
-      <BrandLogo size={64} />
-      <Text style={s.kicker}>NEARBY · DELIVERY</Text>
-      <Text style={s.title}>Welcome back.</Text>
-    </View>
-    <SignIn routing="hash" forceRedirectUrl="/" appearance={{
-      variables: { colorPrimary: C.primary, colorBackground: C.surface, colorForeground: C.text, colorMutedForeground: C.muted, colorInputForeground: C.text, borderRadius: '0.75rem' },
-      elements: { rootBox: { width: '100%', maxWidth: '420px' }, cardBox: { width: '100%', boxShadow: 'none' }, card: { boxShadow: 'none', borderColor: C.border }, footerAction: { display: 'none' } },
-    }} />
-  </View>;
+ return <main style={{ flex: 1, background: C.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', padding: 'clamp(24px, 6vh, 64px) 16px 32px', minHeight: 0, boxSizing: 'border-box', gap: 16, overflowY: 'auto' }}>
+  <BrandLogo size={64} />
+  <p style={{ color: C.primaryText, fontSize: 11, fontWeight: 600, letterSpacing: '1.2px', margin: 0, fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' }}>NEARBY · DELIVERY</p>
+  <h1 style={{ color: C.text, fontSize: 30, fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.25, margin: 0, fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif' }}>Welcome back.</h1>
+  <SignIn routing="hash" forceRedirectUrl="/" appearance={{ variables: { colorPrimary: C.primary }, elements: { rootBox: { width: '100%', maxWidth: 420 }, card: { boxSizing: 'border-box', width: '100%', backgroundColor: C.surface, color: C.text }, formFieldInput: { backgroundColor: C.bg, color: C.text }, footerAction: { display: 'none' } } }} />
+ </main>;
 }
-
-const s = StyleSheet.create({
-  screen: { flex: 1, width: '100%', minHeight: '100%', alignItems: 'center', justifyContent: 'center', gap: 22, padding: 24, backgroundColor: C.bg },
-  brand: { alignItems: 'center', gap: 10 },
-  kicker: { color: C.primaryText, fontSize: 11, fontWeight: '800', letterSpacing: 2 },
-  title: { color: C.text, fontSize: 28, fontWeight: '800' },
-});
