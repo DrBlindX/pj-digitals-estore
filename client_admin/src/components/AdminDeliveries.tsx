@@ -8,7 +8,7 @@ import type { AdminPartner } from '../services/partners';
 export default function AdminDeliveries() {
  const { userId, getToken } = useAuth();
  const { palette: p } = useAdminTheme();
- const [unassigned, setUnassigned] = useState(false), [page, setPage] = useState(1), [attempt, setAttempt] = useState(0);
+ const [unassigned, setUnassigned] = useState(true), [page, setPage] = useState(1), [attempt, setAttempt] = useState(0);
  const key = `${userId}:${unassigned}:${page}:${attempt}`;
  const [state, setState] = useState<{ key: string; rows: DeliveryRow[]; pages: number; error: string } | null>(null);
  const [editing, setEditing] = useState<DeliveryRow | null>(null);
@@ -47,9 +47,9 @@ export default function AdminDeliveries() {
   finally { lock.current = false; if (mounted.current) { setBusy(false); setAttempt(value => value + 1); } }
  }
  const button = (label: string, action: () => void, disabled = false) => <Pressable accessibilityRole="button" onPress={action} disabled={busy || disabled} style={{ padding: 12, borderRadius: 10, backgroundColor: p.soft, opacity: busy || disabled ? 0.5 : 1 }}><Text style={{ color: p.primaryText }}>{label}</Text></Pressable>;
- return <View style={{ gap: 12, marginTop: 24 }}>
-  <Text style={{ color: p.text, fontWeight: '800', fontSize: 20 }}>Delivery assignments</Text>
-  <View style={{ flexDirection: 'row', gap: 12 }}>{button('Assigned deliveries', () => { setUnassigned(false); setPage(1); setEditing(null); setError(''); }, !unassigned)}{button('Awaiting assignment', () => { setUnassigned(true); setPage(1); setEditing(null); setError(''); }, unassigned)}</View>
+ return <View style={{ gap: 12 }}>
+  <Text style={{ color: p.text, fontWeight: '800', fontSize: 20 }}>Assignments</Text>
+  <View style={{ flexDirection: 'row', gap: 8 }}>{[{ label: 'Waiting', value: true }, { label: 'Assigned', value: false }].map(filter => <Pressable key={filter.label} accessibilityRole="button" accessibilityState={{ selected: unassigned === filter.value }} disabled={busy} onPress={() => { if (unassigned !== filter.value) { setUnassigned(filter.value); setPage(1); setEditing(null); setError(''); } }} style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: unassigned === filter.value ? p.primary : p.soft, opacity: busy ? 0.5 : 1 }}><Text style={{ color: unassigned === filter.value ? p.onPrimary : p.primaryText, fontWeight: '700' }}>{filter.label}</Text></Pressable>)}</View>
   {error ? <Text accessibilityRole="alert" style={{ color: p.terracotta }}>{error}</Text> : null}
   {!current ? <Text style={{ color: p.muted }}>Loading deliveries…</Text> : current.error ? <Text accessibilityRole="alert" style={{ color: p.terracotta }}>{current.error}</Text> : current.rows.length ? current.rows.map(row => <View key={row.id} style={{ backgroundColor: p.surface, padding: 16, borderWidth: 1, borderColor: p.border, borderRadius: 14, gap: 10 }}>
    <Text style={{ color: p.text, fontWeight: '700' }}>{row.number} · ₹{row.total.toLocaleString('en-IN')}</Text><Text style={{ color: p.muted }}>{row.shop} · {row.status}{unassigned ? '' : ` · ${row.driver}`}</Text>
@@ -61,6 +61,6 @@ export default function AdminDeliveries() {
    </> : unassigned || !['delivered', 'cancelled'].includes(row.status) ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void start(row)} style={{ padding: 12, borderRadius: 8, backgroundColor: p.soft }}><Text style={{ color: p.primaryText }}>{unassigned ? 'Assign partner' : 'Cancel assignment'}</Text></Pressable> : null}
   </View>) : <Text style={{ color: p.muted }}>No records returned.</Text>}
   {button(current?.error ? 'Retry deliveries' : 'Refresh deliveries', () => { setEditing(null); setAttempt(value => value + 1); }, !current)}
-  {current && !current.error ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{button('Previous', () => { setEditing(null); setPage(value => value - 1); }, page <= 1)}<Text style={{ color: p.muted }}>Page {page} of {Math.max(1, current.pages)}</Text>{button('Next', () => { setEditing(null); setPage(value => value + 1); }, page >= current.pages)}</View> : null}
+  {current && !current.error && current.pages > 1 ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>{button('Previous', () => { setEditing(null); setPage(value => value - 1); }, page <= 1)}<Text style={{ color: p.muted }}>Page {page} of {Math.max(1, current.pages)}</Text>{button('Next', () => { setEditing(null); setPage(value => value + 1); }, page >= current.pages)}</View> : null}
  </View>;
 }

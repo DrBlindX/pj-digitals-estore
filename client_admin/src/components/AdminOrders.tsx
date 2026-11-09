@@ -30,22 +30,22 @@ export default function AdminOrders() {
  const button = (label: string, action: () => void, disabled = false) => <Pressable accessibilityRole="button" disabled={disabled} onPress={action} style={{ padding: 12, borderRadius: 10, backgroundColor: p.soft, opacity: disabled ? 0.5 : 1 }}><Text style={{ color: p.primaryText, fontWeight: '700' }}>{label}</Text></Pressable>;
  return <View style={{ gap: 12 }}>
   <Text style={{ color: p.text, fontWeight: '800', fontSize: 20 }}>{id ? 'Order details' : 'Orders'}</Text>
-  <Text style={{ color: p.muted }}>Live orders across all shops.</Text>
   {id ? button('← Back to orders', () => setId(null)) : null}
   {!current ? <Text accessibilityLiveRegion="polite" style={{ color: p.muted }}>Loading orders…</Text> : current.error ? <Text accessibilityRole="alert" style={{ color: p.terracotta }}>{current.error}</Text> : current.orders.length ? current.orders.map(order => <View key={order.id} style={{ backgroundColor: p.surface, borderWidth: 1, borderColor: p.border, borderRadius: 14, padding: 16, gap: 8 }}>
-   <Text style={{ color: p.text, fontWeight: '800' }}>{order.number}</Text>
-   <Text style={{ color: p.muted }}>{order.customer} · {order.date}</Text>
-   <Text style={{ color: p.primaryText }}>₹{order.total.toLocaleString('en-IN')} · {order.status}</Text>
-   <Text style={{ color: p.muted }}>{order.payment} · Delivery: {order.deliveryStatus}</Text>
+   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><Text style={{ color: p.text, fontWeight: '800', flex: 1 }}>{order.number}</Text><Text style={{ color: p.primaryText, fontWeight: '800' }}>₹{order.total.toLocaleString('en-IN')}</Text></View>
+   <Text style={{ color: p.muted }}>{order.customer} · {order.status}</Text>
    {id ? <>
+    <Text style={{ color: p.muted }}>{order.date}</Text>
+    <Text style={{ color: p.muted }}>{order.payment}</Text>
+    <Text style={{ color: p.muted }}>Delivery: {order.deliveryStatus}</Text>
     <AdminOrderStatus key={`${order.id}:${order.status}`} id={order.id} status={order.status} onReload={() => setAttempt(value => value + 1)} />
     <Text style={{ color: p.text, fontWeight: '700' }}>Items</Text>
     {order.items.map((item, index) => <View key={index}><Text style={{ color: p.text }}>{item.name}</Text><Text style={{ color: p.muted }}>{item.quantity} × ₹{item.price.toLocaleString('en-IN')}{item.size ? ` · Size ${item.size}` : ''}</Text></View>)}
     <Text style={{ color: p.text, fontWeight: '700' }}>Delivery address</Text><Text style={{ color: p.muted }}>{order.address || 'Address unavailable'}</Text>
     {order.delivery ? <Text style={{ color: p.muted }}>Delivery partner: {order.delivery.driver}</Text> : null}
-   </> : button('View details', () => setId(order.id))}
+   </> : button('Open order', () => setId(order.id))}
   </View>) : <Text style={{ color: p.muted }}>No orders returned.</Text>}
   {button(current?.error ? 'Retry orders' : 'Refresh orders', () => setAttempt(value => value + 1), !current)}
-  {!id && current && !current.error ? <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>{button('Previous', () => setPage(value => value - 1), page <= 1)}<Text style={{ color: p.muted }}>Page {page} of {Math.max(1, current.pages)}</Text>{button('Next', () => setPage(value => value + 1), page >= current.pages)}</View> : null}
+  {!id && current && !current.error && current.pages > 1 ? <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>{button('Previous', () => setPage(value => value - 1), page <= 1)}<Text style={{ color: p.muted }}>Page {page} of {Math.max(1, current.pages)}</Text>{button('Next', () => setPage(value => value + 1), page >= current.pages)}</View> : null}
  </View>;
 }

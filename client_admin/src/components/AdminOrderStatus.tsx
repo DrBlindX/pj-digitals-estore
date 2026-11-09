@@ -7,6 +7,7 @@ import { adminOrderTransitions, updateAdminOrderStatus } from '../services/order
 export default function AdminOrderStatus({ id, status, onReload }: { id: string; status: string; onReload: () => void }) {
  const { getToken } = useAuth();
  const { palette: p } = useAdminTheme();
+ const [expanded, setExpanded] = useState(false);
  const [target, setTarget] = useState<string | null>(null);
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState('');
@@ -30,6 +31,7 @@ export default function AdminOrderStatus({ id, status, onReload }: { id: string;
  }
  const action = (label: string, press: () => void, disabled = false) => <Pressable accessibilityRole="button" disabled={disabled} onPress={press} style={{ padding: 12, borderRadius: 10, backgroundColor: p.soft, opacity: disabled ? 0.5 : 1 }}><Text style={{ color: p.primaryText, fontWeight: '700' }}>{label}</Text></Pressable>;
  if (!adminOrderTransitions[status]?.length) return <Text style={{ color: p.muted }}>This order has no further status actions.</Text>;
+ if (!expanded) return <Pressable accessibilityRole="button" onPress={() => setExpanded(true)} style={{ padding: 12, backgroundColor: p.soft, borderRadius: 10 }}><Text style={{ color: p.primaryText, fontWeight: '700' }}>Change status</Text></Pressable>;
  return <View style={{ gap: 10, marginTop: 12 }}>
   <Text style={{ color: p.text, fontWeight: '800' }}>Update order status</Text>
   {error ? <><Text accessibilityRole="alert" style={{ color: p.terracotta }}>{error}</Text>{action('Refresh order', onReload)}</> : completed ? <Text accessibilityLiveRegion="polite" style={{ color: p.primaryText }}>Status saved. Refreshing order…</Text> : target ? <>

@@ -26,7 +26,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#EEE5F8",
+        "backgroundColor": "#F5F7FA",
         "foregroundImage": "./assets/images/nearby-logo.png"
       }
     },

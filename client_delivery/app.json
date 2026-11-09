@@ -7,9 +7,28 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/images/nearby-logo.png",
-    "android": { "adaptiveIcon": { "backgroundColor": "#FAF8FF", "foregroundImage": "./assets/images/nearby-logo.png" } },
-    "web": { "favicon": "./assets/images/nearby-logo.png" },
-    "plugins": ["expo-router", "expo-secure-store", "expo-location", ["@clerk/expo", { "appleSignIn": false }]],
-    "experiments": { "typedRoutes": true }
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F7FA",
+        "foregroundImage": "./assets/images/nearby-logo.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/nearby-logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-location",
+      [
+        "@clerk/expo",
+        {
+          "appleSignIn": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

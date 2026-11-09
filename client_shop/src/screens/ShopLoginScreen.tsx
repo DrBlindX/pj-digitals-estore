@@ -25,13 +25,13 @@ export function ShopLoginScreen() {
   }
   return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
     <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center', gap: 16 }}>
-      <BrandLogo size={64} /><Text style={S.title}>NearBy Shop</Text><Text style={S.subtitle}>Sign in with your Clerk account.</Text>
+      <BrandLogo size={64} /><Text style={{ color: C.cyan, fontSize: 11, fontWeight: '600', letterSpacing: 1.2 }}>NEARBY · SHOP PARTNER</Text><Text style={{ color: C.text, fontSize: 30, fontWeight: '600', letterSpacing: -0.8, lineHeight: 38 }}>Welcome back.</Text><Text style={S.subtitle}>Sign in with your Clerk account.</Text>
       <View style={[S.card, { padding: 24, gap: 18 }]}>
-        <Text style={S.name}>Welcome back.</Text><Text style={S.small}>Continue to Clerk to sign in and complete any verification steps.</Text>
+        <Text style={S.name}>Sign in</Text><Text style={S.small}>Continue to Clerk to sign in and complete any verification steps.</Text>
         {error ? <Text accessibilityRole="alert" style={{ color: C.red, lineHeight: 20 }}>{error}</Text> : null}
         <Pressable disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} onPress={() => void signIn()} style={[S.btn, { minHeight: 48, opacity: busy ? 0.6 : 1 }]}>{busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={S.btnText}>Continue with Clerk</Text>}</Pressable>
       </View>
-      <Text style={[S.small, { lineHeight: 19 }]}>Your account must be linked to an approved shop to access shop data.</Text>
+      <Text style={[S.small, { lineHeight: 19 }]}>Sign in to continue to NearBy.</Text>
     </View>
   </ScrollView></SafeAreaView>;
 }

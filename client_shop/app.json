@@ -34,7 +34,7 @@
     "version": "1.0.0",
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F5F0E4",
+        "backgroundColor": "#F5F7FA",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "foregroundImage": "./assets/android-icon-foreground.png"

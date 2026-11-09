@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#EEE5F8",
+        "backgroundColor": "#F5F7FA",
         "foregroundImage": "./assets/images/Neon Purple Marketplace Delivery Icon.png"
       },
       "predictiveBackGestureEnabled": false
@@ -24,12 +24,17 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      ["@clerk/expo", { "appleSignIn": false }],
+      [
+        "@clerk/expo",
+        {
+          "appleSignIn": false
+        }
+      ],
       "@clerk/expo-native-components/app.plugin.js",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#EEE5F8",
+          "backgroundColor": "#F5F7FA",
           "image": "./assets/images/Neon Purple Marketplace Delivery Icon.png",
           "imageWidth": 76
         }
