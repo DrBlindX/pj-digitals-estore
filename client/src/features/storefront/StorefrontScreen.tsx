@@ -1,3 +1,4 @@
+import { groupSupermarketProducts, supermarketOffers } from './utils/supermarketProducts';
 import { useSavedAddresses } from './hooks/useSavedAddresses';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createCustomerOrder } from '@/services/orders';
@@ -22,7 +23,7 @@ import PartnerRequest from './components/PartnerRequest';
 import CategoryMenu from './components/CategoryMenu';
 import OrderDetails from './components/OrderDetails';
 import type { PartnerDraft, PartnerRole } from './utils/partnerRequests';
-import { availableQuantity } from './utils/productOptions';
+import { availableQuantity, minimumOrderQuantity, minimumQuantityError } from './utils/productOptions';
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection';
 import AddressBook from './components/AddressBook';
 import SearchSuggestions from './components/SearchSuggestions';
@@ -60,6 +61,8 @@ export default function StorefrontScreen() {
   function continueToPayment() {
     if (!customer) { router.push({ pathname: '/signup', params: { returnTo: 'payment' } }); return; }
     if (!basket.synced || basket.busy) { notify('Wait for your saved cart to load, and resolve any cart errors before checkout.'); setTab('Cart'); return; }
+    const quantityError = minimumQuantityError(basket.lines);
+    if (quantityError) { notify(quantityError, 'error'); setTab('Cart'); return; }
     setTab('Payment'); pageScroll.current?.scrollTo({ y: 0, animated: false });
   }
 
@@ -124,6 +127,7 @@ export default function StorefrontScreen() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
   const detailRequest = useRef(0);
+  const supermarketAddLock = useRef(false);
   const getStore = (id: StoreId) => catalogue.shops.find(shop => shop.id === id) ?? products.find(product => product.store === id)?.shop ?? getFallbackStore(id);
   const locationShops = catalogue.shops.filter(shop => shop.location === deliveryLocation);
   const locationProducts = products.filter(product => !product.shop?.location || product.shop.location === deliveryLocation);
@@ -169,10 +173,34 @@ export default function StorefrontScreen() {
     if (product.sizes?.length && (selectedProduct?.id !== product.id || !selectedSize)) {
       void openProduct(product); notify('Choose a size before adding this item.'); return;
     }
+    if (supermarketAddLock.current) return;
+    const inCart = basket.lines.filter(line => line.product.id === product.id).reduce((sum, line) => sum + line.quantity, 0);
+    quantity = Math.max(quantity, minimumOrderQuantity(product.price) - inCart);
+    const supermarketPurchase = tab === 'Supermarket';
     try {
+      if (supermarketPurchase) {
+        supermarketAddLock.current = true;
+        let offer: Product | undefined;
+        for (const candidate of supermarketOffers(products, product)) {
+          const current = await catalogue.details(candidate.id);
+          const inCart = basket.lines.filter(line => line.product.id === current.id).reduce((sum, line) => sum + line.quantity, 0);
+          if ((current.stock ?? 0) > 5 && (current.stock ?? 0) >= inCart + quantity && (!selectedSize || current.sizes?.includes(selectedSize))) {
+            offer = current;
+            break;
+          }
+        }
+        if (!offer) throw new Error('No shop currently has more than 5 units and enough stock for this quantity.');
+        if (offer.price !== product.price) {
+          await openProduct(offer);
+          notify(`The available shop price is ${money(offer.price)}. Review the product before adding it.`);
+          return;
+        }
+        product = offer;
+      }
       await basket.add(product, product.sizes?.length ? selectedSize : undefined, quantity);
       notify(`${quantity} ${quantity === 1 ? 'item' : 'items'} added to your cart.`, 'success');
     } catch (cause) { notify(cause instanceof Error ? cause.message : 'Unable to add this item.', 'error'); }
+    finally { if (supermarketPurchase) supermarketAddLock.current = false; }
   }
   async function changeQuantity(line: BasketLine, difference: number) {
     try { await basket.change(line, difference); notify('Cart updated.', 'success'); }
@@ -193,12 +221,12 @@ export default function StorefrontScreen() {
 
   async function openProduct(product: Product): Promise<void> {
     const request = ++detailRequest.current;
-    setSelectedProduct(product); setSelectedSize(''); setSelectedQuantity(1); setDetailLoading(true); setDetailError('');
+    setSelectedProduct(product); setSelectedSize(''); setSelectedQuantity(Math.max(1, minimumOrderQuantity(product.price) - basket.lines.filter(line => line.product.id === product.id).reduce((sum, line) => sum + line.quantity, 0))); setDetailLoading(true); setDetailError('');
     pageScroll.current?.scrollTo({ y: 0, animated: false });
     try {
       const current = await catalogue.details(product.id);
       if (request !== detailRequest.current) return;
-      setSelectedProduct(item => item?.id === current.id ? current : item);
+      setSelectedProduct(item => item?.id === current.id ? (tab === 'Supermarket' && (current.stock ?? 0) <= 5 ? { ...current, stock: 0 } : current) : item);
       setRecentViews(items => [current, ...items.filter(item => item.id !== current.id)].slice(0, 8));
     } catch (cause) {
       if (request === detailRequest.current) setDetailError(cause instanceof Error ? cause.message : 'Unable to load product details.');
@@ -208,6 +236,8 @@ export default function StorefrontScreen() {
   async function placeOrder() {
     if (orderLock.current || placingOrder) return;
     if (!customer || !deliveryAddress || !cartCount || !basket.synced || basket.busy) { notify('Sign in, select an address and wait for your saved cart before placing an order.', 'error'); return; }
+    const quantityError = minimumQuantityError(basket.lines);
+    if (quantityError) { notify(quantityError, 'error'); setTab('Cart'); return; }
     if (paymentMethod !== 'Cash on delivery') return;
     orderLock.current = true; setPlacingOrder(true);
     try {
@@ -286,11 +316,11 @@ export default function StorefrontScreen() {
 
   function renderSupermarket() {
     const query = supermarketSearch.trim().toLowerCase();
-    const categoryProducts = locationProducts.filter(product => supermarketCategory === null || product.category === supermarketCategory);
+    const categoryProducts = groupSupermarketProducts(products).filter(product => supermarketCategory === null || product.category === supermarketCategory);
     const results = categoryProducts.filter((product) => `${product.name} ${product.category}`.toLowerCase().includes(query));
     return <>
       <TouchableOpacity style={styles.backButton} onPress={() => { setSelectedProduct(null); setTab('Home'); pageScroll.current?.scrollTo({ y: 0, animated: false }); }} accessibilityRole="button" accessibilityLabel="Back to home"><Text style={styles.backButtonText}>← Back to Home</Text></TouchableOpacity>
-      <Text style={styles.pageTitle}>Supermarket</Text><Text style={styles.pageIntro}>Browse the products returned by the NearBy catalogue.</Text>
+      <Text style={styles.pageTitle}>Supermarket</Text><Text style={styles.pageIntro}>Browse products from shops in Thodupuzha and Muttom.</Text>
       <View style={styles.searchBox}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput value={supermarketSearch} onChangeText={setSupermarketSearch} placeholder="Search products or categories" placeholderTextColor={palette.muted} style={styles.searchInput} accessibilityLabel="Search supermarket products or categories" returnKeyType="search" autoCapitalize="none" />
@@ -334,7 +364,7 @@ export default function StorefrontScreen() {
       {cartItems.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyEmoji}>🛒</Text><Text style={styles.emptyTitle}>Your cart is waiting</Text><Text style={styles.muted}>Add something you love from the shop.</Text><TouchableOpacity style={styles.heroButton} onPress={goToShop}><Text style={styles.heroButtonText}>Browse products</Text></TouchableOpacity></View> : <>
         {cartItems.map((line) => <View key={line.key} style={styles.cartRow}>
           <View style={styles.cartArt}><ProductPhoto product={line.product} /></View>
-          <View style={styles.cartDetails}><Text style={styles.productName}>{line.product.name}</Text><Text style={styles.muted}>{money(line.price)} each{line.size ? ` · ${line.size}` : ''}</Text>
+          <View style={styles.cartDetails}><Text style={styles.productName}>{line.product.name}</Text><Text style={styles.muted}>{money(line.price)} each{line.size ? ` · ${line.size}` : ''}</Text><Text style={styles.muted}>Shop location: {line.product.shop?.location ?? 'Unavailable'}</Text>{line.price < 500 ? <Text style={styles.formNote}>Minimum 3 units per order. Decrease at the minimum to remove.</Text> : null}
             {line.pending ? <><Text style={styles.formNote}>Not saved — check your saved cart before adding again.</Text><TouchableOpacity onPress={() => basket.removePending(line)}><Text style={styles.backButtonText}>Remove guest copy</Text></TouchableOpacity></> : null}
           </View>
           <View style={styles.qtyBox}><TouchableOpacity disabled={basket.busy || line.pending} onPress={() => changeQuantity(line, -1)} style={styles.qtyButton} accessibilityLabel={`Remove one ${line.product.name}`}><Text style={styles.qtyButtonText}>−</Text></TouchableOpacity><Text style={styles.qtyText}>{line.quantity}</Text><TouchableOpacity disabled={basket.busy || line.pending} onPress={() => changeQuantity(line, 1)} style={styles.qtyButton} accessibilityLabel={`Add one ${line.product.name}`}><Text style={styles.qtyButtonText}>+</Text></TouchableOpacity></View>
@@ -395,9 +425,10 @@ export default function StorefrontScreen() {
     if (!product) return null;
     const inCart = basket.lines.filter(line => line.product.id === product.id).reduce((sum, line) => sum + line.quantity, 0);
     const remaining = availableQuantity(product.stock, inCart);
-    const quantity = Math.min(selectedQuantity, Math.max(1, remaining));
-    const unavailable = remaining === 0 || basket.busy || detailLoading || !!detailError;
-    if (getStore(product.store).location && getStore(product.store).location !== deliveryLocation) return <>
+    const minimum = Math.max(1, minimumOrderQuantity(product.price) - inCart);
+    const quantity = Math.max(minimum, Math.min(selectedQuantity, Math.max(1, remaining)));
+    const unavailable = remaining < minimum || basket.busy || detailLoading || !!detailError;
+    if (tab !== 'Supermarket' && getStore(product.store).location && getStore(product.store).location !== deliveryLocation) return <>
       <Text style={styles.pageTitle}>{product.name}</Text>
       <View style={styles.emptyState}><Text style={styles.emptyTitle}>Unavailable in {deliveryLocation.split(',')[0]}</Text><Text style={styles.muted}>This item is sold by a shop in {getStore(product.store).location}. Change location to view it again.</Text><TouchableOpacity style={styles.secondaryButton} onPress={() => setSelectedProduct(null)} accessibilityRole="button"><Text style={styles.secondaryButtonText}>Back to browsing</Text></TouchableOpacity></View>
     </>;
@@ -421,9 +452,10 @@ export default function StorefrontScreen() {
       {product.sizes?.length ? <><Text style={styles.inputLabel}>CHOOSE SIZE</Text><CategoryPicker styles={styles} value={selectedSize} onChange={setSelectedSize} options={product.sizes} /></> : null}
       <View style={{ marginVertical: 18, gap: 10 }}>
         <Text style={styles.inputLabel}>QUANTITY</Text>
+        {product.price < 500 ? <Text style={styles.formNote}>Minimum 3 units per product per order for items below ₹500.</Text> : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 14 }}>
           <View style={styles.qtyBox}>
-            <TouchableOpacity disabled={unavailable || quantity <= 1} onPress={() => setSelectedQuantity(quantity - 1)} accessibilityRole="button" accessibilityLabel="Decrease quantity" style={[styles.qtyButton, { width: 44, height: 44, opacity: unavailable || quantity <= 1 ? 0.4 : 1 }]}><Text style={styles.qtyButtonText}>−</Text></TouchableOpacity>
+            <TouchableOpacity disabled={unavailable || quantity <= minimum} onPress={() => setSelectedQuantity(quantity - 1)} accessibilityRole="button" accessibilityLabel="Decrease quantity" style={[styles.qtyButton, { width: 44, height: 44, opacity: unavailable || quantity <= minimum ? 0.4 : 1 }]}><Text style={styles.qtyButtonText}>−</Text></TouchableOpacity>
             <Text accessibilityLiveRegion="polite" accessibilityLabel={`Quantity ${quantity}`} style={[styles.qtyText, { minWidth: 28, textAlign: 'center', fontSize: 16 }]}>{quantity}</Text>
             <TouchableOpacity disabled={unavailable || quantity >= remaining} onPress={() => setSelectedQuantity(quantity + 1)} accessibilityRole="button" accessibilityLabel="Increase quantity" style={[styles.qtyButton, { width: 44, height: 44, opacity: unavailable || quantity >= remaining ? 0.4 : 1 }]}><Text style={styles.qtyButtonText}>+</Text></TouchableOpacity>
           </View>
@@ -484,7 +516,7 @@ export default function StorefrontScreen() {
         {!catalogue.error && !catalogue.loading && !products.length ? <Text style={styles.formNote}>No products have been published yet.</Text> : null}
         {products.length ? <Text style={styles.formNote}>Shop and delivery coverage have not been supplied for these products.</Text> : null}
         <Text accessibilityLabel={`${pageTitle} page`} style={styles.srOnly}>{pageTitle}</Text>
-        {selectedProduct ? renderDetails() : tab === 'Home' ? renderHome() : tab === 'Shop' ? renderShop() : tab === 'Supermarket' ? renderSupermarket() : tab === 'Shops' ? renderStores() : tab === 'Cart' ? renderCart() : tab === 'Addresses' ? <AddressBook addresses={addresses} selectedId={selectedAddressId} location={deliveryLocation} onSave={async address => { const saved = await savedAddresses.save(address); notify('Address saved.', 'success'); selectAddress(saved.id); }} busy={savedAddresses.busy} loading={savedAddresses.loading} loadError={customer ? savedAddresses.error : 'Sign in to save and view your addresses.'} onReload={savedAddresses.reload} onSignIn={!customer ? () => router.push('/login') : undefined} onSelect={selectAddress} onRemove={async id => { await savedAddresses.remove(id); notify('Address removed.', 'success'); if (selectedAddressId === id) setSelectedAddressId(null); }} onBack={() => setTab(addressReturnTab)} /> : tab === 'Payment' && customer ? <PaymentSection address={deliveryAddress} onManageAddress={() => { setAddressReturnTab('Payment'); setTab('Addresses'); }} subtotal={subtotal} itemCount={cartCount} location={deliveryLocation} method={paymentMethod} onChange={setPaymentMethod} onBack={() => setTab('Cart')} onConfirm={() => void placeOrder()} canOrder={paymentMethod === 'Cash on delivery' && basket.synced && !basket.busy} busy={placingOrder} /> : tab === 'Favorites' ? renderFavorites() : tab === 'Orders' ? renderOrders() : tab === 'History' ? renderHistory() : tab === 'Account' ? renderAccount() : tab === 'Customer Care' ? renderCustomerCare() : tab === 'Shop request' ? renderPartnerRequest('shop') : tab === 'Delivery request' ? renderPartnerRequest('delivery') : renderMore()}
+        {selectedProduct ? renderDetails() : tab === 'Home' ? renderHome() : tab === 'Shop' ? renderShop() : tab === 'Supermarket' ? renderSupermarket() : tab === 'Shops' ? renderStores() : tab === 'Cart' ? renderCart() : tab === 'Addresses' ? <AddressBook addresses={addresses} selectedId={selectedAddressId} location={deliveryLocation} onSave={async address => { const saved = await savedAddresses.save(address); notify('Address saved.', 'success'); selectAddress(saved.id); }} busy={savedAddresses.busy} loading={savedAddresses.loading} loadError={customer ? savedAddresses.error : 'Sign in to save and view your addresses.'} onReload={savedAddresses.reload} onSignIn={!customer ? () => router.push('/login') : undefined} onSelect={selectAddress} onRemove={async id => { await savedAddresses.remove(id); notify('Address removed.', 'success'); if (selectedAddressId === id) setSelectedAddressId(null); }} onBack={() => setTab(addressReturnTab)} /> : tab === 'Payment' && customer ? <PaymentSection items={cartItems} address={deliveryAddress} onManageAddress={() => { setAddressReturnTab('Payment'); setTab('Addresses'); }} subtotal={subtotal} itemCount={cartCount} location={deliveryLocation} method={paymentMethod} onChange={setPaymentMethod} onBack={() => setTab('Cart')} onConfirm={() => void placeOrder()} canOrder={paymentMethod === 'Cash on delivery' && basket.synced && !basket.busy} busy={placingOrder} /> : tab === 'Favorites' ? renderFavorites() : tab === 'Orders' ? renderOrders() : tab === 'History' ? renderHistory() : tab === 'Account' ? renderAccount() : tab === 'Customer Care' ? renderCustomerCare() : tab === 'Shop request' ? renderPartnerRequest('shop') : tab === 'Delivery request' ? renderPartnerRequest('delivery') : renderMore()}
         {desktop ? <View style={{ marginTop: 56, paddingTop: 30, paddingBottom: 12, borderTopWidth: 1, borderColor: palette.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 32 }}>
           <View style={{ maxWidth: 360 }}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}><BrandLogo size={48} /><Text style={styles.brand}>NearBy</Text></View><Text style={[styles.pageIntro, { marginTop: 12 }]}>Your town. Your shops. Your doorstep.</Text><Text style={styles.muted}>Shopping local in {deliveryLocation}.</Text></View>
           <View style={{ gap: 14 }}><Text style={styles.storeName}>Explore</Text>{([{ label: 'Supermarket', target: 'Supermarket' }, { label: 'Shop by name', target: 'Shops' }, { label: 'Wishlist', target: 'Favorites' }] as const).map(link => <TouchableOpacity key={link.target} accessibilityRole="button" onPress={() => { setSelectedProduct(null); setTab(link.target); pageScroll.current?.scrollTo({ y: 0, animated: false }); }}><Text style={styles.changeLink}>{link.label}</Text></TouchableOpacity>)}</View>

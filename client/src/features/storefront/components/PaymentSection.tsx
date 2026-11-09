@@ -3,6 +3,7 @@ import Text from './AppText';
 import { useStoreTheme } from '../ThemeContext';
 import { money, type Palette } from '../data/catalog';
 import type { DeliveryAddress } from './AddressBook';
+import type { BasketLine } from '../hooks/useCustomerCart';
 
 export type PaymentMethod = 'UPI' | 'Card' | 'Cash on delivery';
 const methods: { name: PaymentMethod; icon: string; description: string }[] = [
@@ -11,7 +12,7 @@ const methods: { name: PaymentMethod; icon: string; description: string }[] = [
   { name: 'Card', icon: '▣', description: 'Credit or debit card' },
 ];
 
-export default function PaymentSection({ subtotal, itemCount, location, address, onManageAddress, method, onChange, onBack, onConfirm, canOrder, busy = false }: { subtotal: number; itemCount: number; location: string; address?: DeliveryAddress; onManageAddress: () => void; method: PaymentMethod; onChange: (method: PaymentMethod) => void; onBack: () => void; onConfirm: () => void; canOrder: boolean; busy?: boolean }) {
+export default function PaymentSection({ items, subtotal, itemCount, location, address, onManageAddress, method, onChange, onBack, onConfirm, canOrder, busy = false }: { items: BasketLine[]; subtotal: number; itemCount: number; location: string; address?: DeliveryAddress; onManageAddress: () => void; method: PaymentMethod; onChange: (method: PaymentMethod) => void; onBack: () => void; onConfirm: () => void; canOrder: boolean; busy?: boolean }) {
   const { palette } = useStoreTheme();
   const styles = createStyles(palette);
   const delivery = subtotal >= 999 ? 0 : 99;
@@ -23,6 +24,16 @@ export default function PaymentSection({ subtotal, itemCount, location, address,
 
     {address ? <><Text style={styles.methodName}>{address.name}</Text><Text style={styles.copy}>{address.address} · {address.pincode}</Text><Text style={styles.copy}>{address.phone}</Text></> : <Text style={styles.copy}>Add a delivery address to continue.</Text>}
     <Pressable onPress={onManageAddress} accessibilityRole="button" style={styles.back}><Text style={styles.backText}>{address ? 'Change address →' : 'Add address →'}</Text></Pressable>
+    <Text style={styles.label}>YOUR PRODUCTS</Text>
+    {items.map(line => <View key={line.key} style={styles.method}>
+      <View style={styles.methodCopy}>
+        <Text style={styles.methodName}>{line.product.name}</Text>
+        <Text style={styles.copy}>Quantity: {line.quantity}{line.size ? ` · Size: ${line.size}` : ''}</Text>
+        <Text style={styles.copy}>Shop location: {line.product.shop?.location ?? 'Unavailable'}</Text>
+        {line.price < 500 ? <Text style={styles.copy}>Minimum 3 units per product per order.</Text> : null}
+      </View>
+      <Text style={styles.value}>{money(line.price * line.quantity)}</Text>
+    </View>)}
     <Text style={styles.label}>PAYMENT METHOD</Text>
     {methods.map((option) => <Pressable key={option.name} disabled={busy} onPress={() => onChange(option.name)} style={[styles.method, method === option.name && styles.selected]} accessibilityRole="radio" accessibilityState={{ checked: method === option.name }}>
       <View style={styles.icon}><Text style={styles.iconText}>{option.icon}</Text></View>

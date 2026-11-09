@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCustomerAuth } from '@/features/auth/CustomerAuthContext';
 import { createCartApi, type UserCart } from '@/services/cart';
 import type { Product } from '../data/types';
-import { validatePurchaseQuantity } from '../utils/productOptions';
+import { minimumOrderQuantity, validatePurchaseQuantity } from '../utils/productOptions';
 
 export type BasketLine = { key: string; product: Product; quantity: number; price: number; size?: string; pending?: boolean };
 const lineKey = (id: string, size?: string) => `${id}:${size || ''}`;
@@ -96,6 +96,7 @@ export function useCustomerCart(products: Product[]) {
     const currentLines = owner ? lines : guestRef.current;
     const inCart = currentLines.filter(line => line.product.id === product.id).reduce((sum, line) => sum + line.quantity, 0);
     validatePurchaseQuantity(amount, product.stock, inCart);
+    if (inCart + amount < minimumOrderQuantity(product.price)) throw new Error('Products below ₹500 require at least 3 units per order.');
     if (owner) return mutate(() => api.addItem(product.id, amount, size));
     const key = lineKey(product.id, size);
     const existing = guestRef.current.find(line => line.key === key);
@@ -105,8 +106,13 @@ export function useCustomerCart(products: Product[]) {
   }
   async function change(line: BasketLine, difference: number) {
     if (line.pending) throw new Error('This guest item was not saved. Remove it and add it again after reloading the cart.');
-    const quantity = line.quantity + difference;
+    let quantity = line.quantity + difference;
     const inCart = lines.filter(item => item.product.id === line.product.id).reduce((sum, item) => sum + item.quantity, 0);
+    const nextTotal = inCart - line.quantity + Math.max(0, quantity);
+    if (nextTotal > 0 && nextTotal < minimumOrderQuantity(line.price)) {
+      if (difference < 0 && inCart === line.quantity) quantity = 0;
+      else throw new Error('Products below ₹500 require at least 3 units per order.');
+    }
     if (difference > 0 && inCart + difference > (line.product.stock ?? Infinity)) throw new Error('Not enough stock is available.');
     if (!owner) {
       updateGuest(items => items.flatMap(item => item.key !== line.key ? [item] : quantity <= 0 ? [] : [{ ...item, quantity }]));
