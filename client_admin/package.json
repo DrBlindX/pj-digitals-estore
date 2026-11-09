@@ -22,7 +22,14 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
-    "react-native-web": "~0.21.0"
+    "react-native-web": "~0.21.0",
+    "@clerk/expo": "4.14.1",
+    "@clerk/react": "6.18.1",
+    "@clerk/clerk-js": "6.40.1",
+    "expo-secure-store": "~57.0.4",
+    "expo-auth-session": "~57.0.16",
+    "expo-crypto": "~57.0.4",
+    "expo-web-browser": "~57.0.3"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

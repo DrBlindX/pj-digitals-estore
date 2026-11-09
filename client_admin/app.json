@@ -1,12 +1,37 @@
 {
   "expo": {
-    "name": "TDP Store Admin",
+    "name": "NearBy",
     "slug": "tdpstore-admin",
     "scheme": "tdpstore-admin",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true }
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "@clerk/expo",
+        {
+          "appleSignIn": false
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "icon": "./assets/images/nearby-logo.png",
+    "ios": {
+      "icon": "./assets/images/nearby-logo.png"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#EEE5F8",
+        "foregroundImage": "./assets/images/nearby-logo.png"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/nearby-logo.png"
+    }
   }
 }

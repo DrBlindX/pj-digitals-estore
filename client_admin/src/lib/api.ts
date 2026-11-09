@@ -23,7 +23,11 @@ export async function apiRequest(path: string, options: RequestInit = {}) {
   const timer = setTimeout(abort, 8000);
   try {
     const response = await fetch(`${getBaseURL()}${path}`, { ...options, signal: controller.signal });
-    if (!response.ok) throw new Error(`Server request failed (${response.status}).`);
+    if (!response.ok) {
+      let message = `Server request failed (${response.status}).`;
+      try { const result = await response.json(); if (typeof result.message === 'string') message = result.message; } catch { /* Keep HTTP error for non-JSON responses. */ }
+      throw new Error(message);
+    }
     return response;
   } finally {
     clearTimeout(timer);

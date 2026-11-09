@@ -1,9 +1,12 @@
+import { useAdminTheme, type Palette } from '../context/AdminTheme';
 import { useEffect, useState, type PropsWithChildren } from 'react';
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { checkServer } from '../lib/api';
 
 type Connection = 'checking' | 'connected' | 'offline';
 export function ServerConnection({ children }: PropsWithChildren) {
+  const { palette } = useAdminTheme();
+  const styles = createStyles(palette);
   const [status, setStatus] = useState<Connection>('checking');
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
@@ -31,12 +34,12 @@ export function ServerConnection({ children }: PropsWithChildren) {
     </View>
   </View>;
 }
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFCF4' },
+const createStyles = (p: Palette) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: p.background },
   content: { flex: 1 },
-  bar: { minHeight: 32, paddingHorizontal: 16, paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#DBCEAD', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' },
-  label: { color: '#174E3C', fontSize: 10, lineHeight: 16, textAlign: 'center' },
-  offline: { color: '#A95237' },
+  bar: { minHeight: 32, paddingHorizontal: 16, paddingVertical: 6, borderTopWidth: 1, borderTopColor: p.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap' },
+  label: { color: p.primaryText, fontSize: 10, lineHeight: 16, textAlign: 'center' },
+  offline: { color: p.terracotta },
   retry: { minHeight: 32, paddingHorizontal: 10, justifyContent: 'center' },
-  retryText: { color: '#174E3C', fontSize: 11, fontWeight: '700' },
+  retryText: { color: p.primaryText, fontSize: 11, fontWeight: '700' },
 });
