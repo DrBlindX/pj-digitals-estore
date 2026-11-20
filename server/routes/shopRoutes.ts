@@ -2,6 +2,7 @@ import express from "express";
 import { protect, loadShop } from "../middleware/auth.js";
 import { validateObjectId } from "../middleware/validate.js";
 import upload from "../middleware/upload.js";
+import { assignOrderToDriver, listAssignableDrivers, unassignOrder } from "../controllers/shopDispatchController.js";
 import {
   createPayoutRequest,
   exportShopSettlements,
@@ -52,6 +53,10 @@ ShopOwnerRouter.put("/products/:id/stock", loadShop(true), validateObjectId("id"
 
 ShopOwnerRouter.get("/orders", loadShop(true), getShopOrders);
 ShopOwnerRouter.put("/orders/:id/status", loadShop(true), validateObjectId("id"), updateShopOrderStatus);
+
+ShopOwnerRouter.get("/drivers", loadShop(true), listAssignableDrivers);
+ShopOwnerRouter.post("/orders/:id/assign", loadShop(true), validateObjectId("id"), assignOrderToDriver);
+ShopOwnerRouter.put("/orders/:id/unassign", loadShop(true), validateObjectId("id"), unassignOrder);
 
 ShopOwnerRouter.get("/stats", loadShop(true), getShopStats);
 ShopOwnerRouter.get("/settlements/export.csv", loadShop(true), exportShopSettlements);

@@ -11,6 +11,7 @@ export type PlatformSettings = {
   freeShippingThreshold: number; // 0 = off
   taxRate: number; // 0.18 = 18%
   allowCod: boolean;
+  shopsCanAssignDrivers: boolean; // can shop owners assign delivery partners to their own orders?
   lowStockLevel: number;
   announcement: string; // site-wide message shown on the storefront
   supportPhone: string;
@@ -26,6 +27,7 @@ const defaults = (): PlatformSettings => ({
   freeShippingThreshold: num(process.env.FREE_SHIPPING_THRESHOLD, 0),
   taxRate: num(process.env.TAX_RATE, 0),
   allowCod: process.env.ALLOW_COD !== "false",
+  shopsCanAssignDrivers: process.env.SHOPS_CAN_ASSIGN_DRIVERS !== "false",
   lowStockLevel: num(process.env.LOW_STOCK_LEVEL, 5),
   announcement: "",
   supportPhone: "",
@@ -63,7 +65,7 @@ export const saveSettings = async (patch: Record<string, any>, userId?: any) => 
     if (!(k in base)) continue;
     if (k === "commissionRate" || k === "taxRate") rate(k);
     else if (["driverFee", "shippingCost", "freeShippingThreshold", "lowStockLevel"].includes(k)) money(k);
-    else if (k === "allowCod") clean[k] = patch[k] === true || patch[k] === "true";
+    else if (k === "allowCod" || k === "shopsCanAssignDrivers") clean[k] = patch[k] === true || patch[k] === "true";
     else clean[k] = String(patch[k] ?? "").slice(0, 300);
   }
   const doc: any = await Setting.findOne({ key: "platform" });

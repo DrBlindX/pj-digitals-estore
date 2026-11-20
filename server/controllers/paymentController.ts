@@ -6,6 +6,7 @@ import { HttpError, sendError } from "../utils/http.js";
 import { toPaise } from "../utils/pricing.js";
 import { markCheckoutPaid } from "../utils/orderHelpers.js";
 import { notify } from "../utils/notify.js";
+import { alertOps, escapeHtml } from "../utils/telegram.js";
 import {
   createRazorpayOrder,
   razorpayConfigured,
@@ -83,6 +84,10 @@ const settleCheckoutPayment = async (
           ...(payment.razorpayPaymentId && { razorpayPaymentId: payment.razorpayPaymentId }),
         },
       );
+      alertOps(
+        `💸 <b>Refund needed</b>: payment received for a cancelled order\n` +
+          escapeHtml(unpaid.filter((o) => o.orderStatus === "cancelled").map((o) => o.orderNumber).join(", ")),
+      );
       const admins = await User.find({ role: "admin" }).select("_id");
       await notify(
         admins.map((a) => a._id),
@@ -97,6 +102,9 @@ const settleCheckoutPayment = async (
 
     // Shops are told only now that the order is actually paid
     const live = unpaid.filter((o) => o.orderStatus !== "cancelled");
+    if (live.length) {
+      alertOps(`💰 <b>Payment received</b>\n${escapeHtml(live.map((o) => o.orderNumber).join(", "))}`);
+    }
     const shops: any[] = await Shop.find({
       _id: { $in: live.map((o) => o.shop).filter(Boolean) },
     }).select("owner");
@@ -219,6 +227,11 @@ export const razorpayWebhook = async (req: Request, res: Response) => {
         // never trust an event whose amount doesn't match what we charged
         if (!orders.length || payment.amount !== checkoutPaise(orders)) {
           console.error("Razorpay webhook amount mismatch/unknown order:", razorpayOrderId, payment.amount);
+          alertOps(
+            `🚨 <b>Razorpay webhook mismatch</b>: amount or order does not match, payment NOT applied\n` +
+              `order ${escapeHtml(razorpayOrderId)}, payment ${escapeHtml(payment.id)}`,
+            { key: `rzp-mismatch:${razorpayOrderId}`, cooldownMs: 60 * 60_000 },
+          );
           break;
         }
         await settleCheckoutPayment(razorpayOrderId, { razorpayPaymentId: payment.id });

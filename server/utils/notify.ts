@@ -1,5 +1,6 @@
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+import { alertOps, escapeHtml } from "./telegram.js";
 
 type Payload = {
   type: string; // order | delivery | shop | payment | support | system
@@ -47,6 +48,7 @@ export const notify = async (userIds: any, payload: Payload) => {
 };
 
 export const notifyAdmins = async (payload: Payload) => {
+  alertOps(`🔔 <b>${escapeHtml(payload.title)}</b>${payload.body ? "\n" + escapeHtml(payload.body) : ""}`);
   const admins = await User.find({ role: "admin" }).select("_id");
   await notify(admins.map((a) => a._id), payload);
 };

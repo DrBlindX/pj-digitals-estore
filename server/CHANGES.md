@@ -46,3 +46,6 @@
 - Admin: create / edit / delete shops and drivers, hand a shop to a new owner, reassign products, block users, override payment and delivery status, runtime platform settings (commission, driver fee, shipping, tax, COD, announcement), broadcast notifications, overview money numbers.
 - Admin can act as any shop / driver with `x-shop-id` / `x-driver-id` (logged).
 See API.md ("v4 additions").
+
+## v4.1
+- Shops can assign / re-assign / unassign delivery partners (`/api/shop/drivers`, `/api/shop/orders/:id/assign|unassign`), gated by the admin setting `shopsCanAssignDrivers` with a per-shop override `canAssignDrivers`.

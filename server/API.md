@@ -89,3 +89,13 @@ Delivery fee (`driverFee` setting) is locked onto the delivery when it is marked
 - `GET/PUT /api/admin/settings` (commissionRate, driverFee, shippingCost, freeShippingThreshold, taxRate, allowCod, lowStockLevel, announcement, supportPhone, supportEmail); public values appear in `/api/meta`.
 - `POST /api/admin/broadcast` `{title,body?,audience:all|customers|shops|drivers|user,userId?}`.
 - `GET /api/admin/overview` – today's orders/revenue, COD held by drivers, money awaiting settlement, ad totals, top shops.
+
+---
+
+# v4.1 – shop-controlled dispatch + maps
+
+Admin toggle: setting `shopsCanAssignDrivers` (`PUT /api/admin/settings`, default on; env `SHOPS_CAN_ASSIGN_DRIVERS=false` to default off). Per-shop override: `PUT /api/admin/shops/:id` with `canAssignDrivers` = `"true"` | `"false"` | `""` (follow platform). Shops without permission get 403 from the endpoints below.
+- `GET /api/shop/me` now includes `canAssignDrivers` (effective) and `canAssignDriversOverride`; `GET /api/shop/orders` returns `canAssignDrivers` too.
+- `GET /api/shop/drivers?search=&available=true&all=true` – approved delivery partners (default: those covering the shop's area), with `activeJobs`.
+- `POST /api/shop/orders/:id/assign` `{driverId}` – assign / re-assign (same rules as admin: not delivered/cancelled, online orders must be paid, not already picked up).
+- `PUT /api/shop/orders/:id/unassign` – cancel the assignment while it is `assigned` / `accepted`.

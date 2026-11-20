@@ -119,6 +119,10 @@ export const adminUpdateShop = async (req: Request, res: Response) => {
     if (b.categories !== undefined) shop.categories = parseList(b.categories);
     if (b.coordinates !== undefined) shop.coordinates = parseCoordinates(b.coordinates);
     if (b.commissionRate !== undefined) shop.commissionRate = parseRate(b.commissionRate) ?? undefined;
+    if (b.canAssignDrivers !== undefined) {
+      // "true" / "false" force it on / off for this shop; "" follows the platform setting
+      shop.canAssignDrivers = b.canAssignDrivers === "" || b.canAssignDrivers === null ? undefined : b.canAssignDrivers === true || b.canAssignDrivers === "true";
+    }
     if (b.payout !== undefined || b.payoutMethod !== undefined) {
       shop.payout = b.payout === null || b.payout === "" ? undefined : cleanPayoutAccount(b.payout ?? { method: b.payoutMethod, upiId: b.upiId, accountHolder: b.accountHolder, accountNumber: b.accountNumber, ifsc: b.ifsc, bankName: b.bankName });
     }
