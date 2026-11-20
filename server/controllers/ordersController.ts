@@ -22,6 +22,7 @@ import {
   transitionOrder,
 } from "../utils/orderHelpers.js";
 import { notify } from "../utils/notify.js";
+import { alertOps, escapeHtml } from "../utils/telegram.js";
 import { logActivity } from "../utils/activity.js";
 import { getSettings } from "../utils/settings.js";
 import { razorpayConfigured } from "../utils/razorpay.js";
@@ -297,6 +298,11 @@ export const createOrder = async (req: Request, res: Response) => {
       tax: round2(orders.reduce((s, o) => s + o.tax, 0)),
       totalAmount: round2(orders.reduce((s, o) => s + o.totalAmount, 0)),
     };
+
+    alertOps(
+      `🛒 <b>New order</b> ${orders.map((o) => escapeHtml(o.orderNumber)).join(", ")}\n` +
+        `₹${summary.totalAmount} · ${paymentMethod === "cod" ? "cash on delivery" : "online, awaiting payment"}`,
+    );
 
     res.status(201).json({ success: true, data: orders, checkoutId, summary, payment });
   } catch (error) {

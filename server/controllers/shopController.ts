@@ -9,6 +9,7 @@ import { destroyImages, uploadToCloudinary } from "../utils/cloudinaryUpload.js"
 import { attachDeliveries, transitionOrder } from "../utils/orderHelpers.js";
 import { notify, notifyAdmins } from "../utils/notify.js";
 import { getSettings } from "../utils/settings.js";
+import { shopMayAssignDrivers } from "./shopDispatchController.js";
 
 const slugify = (name: string) =>
   name
@@ -172,7 +173,9 @@ export const applyForShop = async (req: Request, res: Response) => {
 
 // GET /api/shop/me   (works while pending so the app can show the status)
 export const getMyShop = async (req: Request, res: Response) => {
-  res.json({ success: true, data: req.shop });
+  const shop: any = req.shop;
+  const allowed = await shopMayAssignDrivers(shop).catch(() => false);
+  res.json({ success: true, data: { ...shop.toObject(), canAssignDrivers: allowed, canAssignDriversOverride: shop.canAssignDrivers } });
 };
 
 // PUT /api/shop/me   (multipart; optional `logo`)
@@ -311,6 +314,7 @@ export const getShopOrders = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: await attachDeliveries(orders),
+      canAssignDrivers: await shopMayAssignDrivers(req.shop),
       pagination: { total, page, pages: Math.ceil(total / limit) },
     });
   } catch (error) {

@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import multer from "multer";
+import { alertOps, errorText, escapeHtml } from "../utils/telegram.js";
 
 const OBJECT_ID = /^[a-f\d]{24}$/i;
 
@@ -26,7 +27,7 @@ export const notFound = (req: Request, res: Response) => {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler = (
   err: any,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ) => {
@@ -40,7 +41,11 @@ export const errorHandler = (
   }
 
   const status = err?.status && err.status < 600 ? err.status : 500;
-  if (status >= 500) console.error("Unhandled error:", err);
+  if (status >= 500) {
+    console.error("Unhandled error:", err);
+    const route = `${req.method} ${req.baseUrl}${req.route?.path ?? ""}`;
+    alertOps(`⚠️ <b>${status}</b> ${escapeHtml(route)}\n<code>${errorText(err)}</code>`, { key: `err:${route}` });
+  }
   res.status(status).json({
     success: false,
     message:

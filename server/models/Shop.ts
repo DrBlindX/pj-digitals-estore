@@ -21,6 +21,8 @@ const shopSchema = new Schema(
     isOpen: { type: Boolean, default: true },
     // per-shop commission override (0.05 = 5%). Empty = platform default from settings.
     commissionRate: { type: Number, min: 0, max: 1 },
+    // admin override: may this shop assign delivery partners itself? undefined = follow the platform setting
+    canAssignDrivers: { type: Boolean },
     // where the shop is paid out
     payout: {
       method: { type: String, enum: PAYOUT_METHODS },

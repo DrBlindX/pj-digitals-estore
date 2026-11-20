@@ -1,0 +1,418 @@
+diff --git a/server/controllers/healthController.ts b/server/controllers/healthController.ts
+new file mode 100644
+index 0000000..038aa8d
+--- /dev/null
++++ b/server/controllers/healthController.ts
+@@ -0,0 +1,94 @@
++import crypto from "crypto";
++import { Request, Response } from "express";
++import mongoose from "mongoose";
++import Order from "../models/Order.js";
++import Shop from "../models/Shop.js";
++import { razorpayConfigured } from "../utils/razorpay.js";
++import { telegramConfigured } from "../utils/telegram.js";
++
++/** Resolves with the MongoDB round-trip time in ms, or null if the database doesn't answer in 2s. */
++const pingDb = async (): Promise<number | null> => {
++  const db = mongoose.connection.db;
++  if (mongoose.connection.readyState !== 1 || !db) return null;
++  const started = Date.now();
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  try {
++    await Promise.race([
++      db.admin().ping(),
++      new Promise((_, reject) => {
++        timer = setTimeout(() => reject(new Error("timeout")), 2000);
++      }),
++    ]);
++    return Date.now() - started;
++  } catch {
++    return null;
++  } finally {
++    if (timer) clearTimeout(timer);
++  }
++};
++
++/**
++ * GET /health  (public, cheap, no auth)
++ * 200 + {"success":true,...} only when the API AND the database answer.
++ * 503 otherwise, so Uptime Kuma, Docker and the auto-deploy health check all see "down".
++ */
++export const health = async (_req: Request, res: Response) => {
++  res.set("Cache-Control", "no-store");
++  const dbPingMs = await pingDb();
++  if (dbPingMs === null) {
++    return res.status(503).json({ success: false, db: "down", uptime: process.uptime() });
++  }
++  return res.json({ success: true, db: "up", dbPingMs, uptime: process.uptime() });
++};
++
++const tokenOk = (req: Request) => {
++  const want = process.env.HEALTH_TOKEN?.trim();
++  const got = req.header("x-health-token");
++  if (!want || !got) return false;
++  const a = Buffer.from(want);
++  const b = Buffer.from(got);
++  return a.length === b.length && crypto.timingSafeEqual(a, b);
++};
++
++/**
++ * GET /health/details  (needs the header  x-health-token: <HEALTH_TOKEN>)
++ * Numbers for Uptime Kuma "JSON Query" monitors. Without a valid token it answers 404,
++ * exactly like an unknown route, so it does not advertise itself.
++ */
++export const healthDetails = async (req: Request, res: Response) => {
++  res.set("Cache-Control", "no-store");
++  if (!tokenOk(req)) {
++    return res
++      .status(404)
++      .json({ success: false, message: `Route not found: ${req.method} ${req.path}` });
++  }
++
++  const dbPingMs = await pingDb();
++  let business: Record<string, number> | null = null;
++  if (dbPingMs !== null) {
++    try {
++      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
++      const [pendingShops, orders24h, paidButCancelled] = await Promise.all([
++        Shop.countDocuments({ status: "pending" }),
++        Order.countDocuments({ createdAt: { $gte: since } }),
++        // money received for an order that was cancelled: an admin must refund it
++        Order.countDocuments({ paymentStatus: "paid", orderStatus: "cancelled" }),
++      ]);
++      business = { pendingShops, orders24h, paidButCancelled };
++    } catch (error: any) {
++      console.error("health details query failed:", error?.message);
++    }
++  }
++
++  const mem = process.memoryUsage();
++  const ok = dbPingMs !== null;
++  return res.status(ok ? 200 : 503).json({
++    success: ok,
++    uptimeSeconds: Math.round(process.uptime()),
++    node: process.version,
++    db: { up: ok, pingMs: dbPingMs },
++    memoryMb: { rss: Math.round(mem.rss / 1048576), heapUsed: Math.round(mem.heapUsed / 1048576) },
++    business,
++    integrations: { razorpay: razorpayConfigured(), telegram: telegramConfigured() },
++  });
++};
+diff --git a/server/controllers/ordersController.ts b/server/controllers/ordersController.ts
+index 1b76fc9..000a821 100644
+--- a/server/controllers/ordersController.ts
++++ b/server/controllers/ordersController.ts
+@@ -22,6 +22,7 @@ import {
+   transitionOrder,
+ } from "../utils/orderHelpers.js";
+ import { notify } from "../utils/notify.js";
++import { alertOps, escapeHtml } from "../utils/telegram.js";
+ import { logActivity } from "../utils/activity.js";
+ import { getSettings } from "../utils/settings.js";
+ import { razorpayConfigured } from "../utils/razorpay.js";
+@@ -298,6 +299,11 @@ export const createOrder = async (req: Request, res: Response) => {
+       totalAmount: round2(orders.reduce((s, o) => s + o.totalAmount, 0)),
+     };
+ 
++    alertOps(
++      `🛒 <b>New order</b> ${orders.map((o) => escapeHtml(o.orderNumber)).join(", ")}\n` +
++        `₹${summary.totalAmount} · ${paymentMethod === "cod" ? "cash on delivery" : "online, awaiting payment"}`,
++    );
++
+     res.status(201).json({ success: true, data: orders, checkoutId, summary, payment });
+   } catch (error) {
+     if (checkoutId) await Order.deleteMany({ checkoutId, paymentStatus: "pending" }).catch(() => {});
+diff --git a/server/controllers/paymentController.ts b/server/controllers/paymentController.ts
+index c5ab712..ddfcb67 100644
+--- a/server/controllers/paymentController.ts
++++ b/server/controllers/paymentController.ts
+@@ -6,6 +6,7 @@ import { HttpError, sendError } from "../utils/http.js";
+ import { toPaise } from "../utils/pricing.js";
+ import { markCheckoutPaid } from "../utils/orderHelpers.js";
+ import { notify } from "../utils/notify.js";
++import { alertOps, escapeHtml } from "../utils/telegram.js";
+ import {
+   createRazorpayOrder,
+   razorpayConfigured,
+@@ -83,6 +84,10 @@ const settleCheckoutPayment = async (
+           ...(payment.razorpayPaymentId && { razorpayPaymentId: payment.razorpayPaymentId }),
+         },
+       );
++      alertOps(
++        `💸 <b>Refund needed</b>: payment received for a cancelled order\n` +
++          escapeHtml(unpaid.filter((o) => o.orderStatus === "cancelled").map((o) => o.orderNumber).join(", ")),
++      );
+       const admins = await User.find({ role: "admin" }).select("_id");
+       await notify(
+         admins.map((a) => a._id),
+@@ -97,6 +102,9 @@ const settleCheckoutPayment = async (
+ 
+     // Shops are told only now that the order is actually paid
+     const live = unpaid.filter((o) => o.orderStatus !== "cancelled");
++    if (live.length) {
++      alertOps(`💰 <b>Payment received</b>\n${escapeHtml(live.map((o) => o.orderNumber).join(", "))}`);
++    }
+     const shops: any[] = await Shop.find({
+       _id: { $in: live.map((o) => o.shop).filter(Boolean) },
+     }).select("owner");
+@@ -219,6 +227,11 @@ export const razorpayWebhook = async (req: Request, res: Response) => {
+         // never trust an event whose amount doesn't match what we charged
+         if (!orders.length || payment.amount !== checkoutPaise(orders)) {
+           console.error("Razorpay webhook amount mismatch/unknown order:", razorpayOrderId, payment.amount);
++          alertOps(
++            `🚨 <b>Razorpay webhook mismatch</b>: amount or order does not match, payment NOT applied\n` +
++              `order ${escapeHtml(razorpayOrderId)}, payment ${escapeHtml(payment.id)}`,
++            { key: `rzp-mismatch:${razorpayOrderId}`, cooldownMs: 60 * 60_000 },
++          );
+           break;
+         }
+         await settleCheckoutPayment(razorpayOrderId, { razorpayPaymentId: payment.id });
+diff --git a/server/controllers/webhooks.ts b/server/controllers/webhooks.ts
+index 9836e1c..1b6d32c 100644
+--- a/server/controllers/webhooks.ts
++++ b/server/controllers/webhooks.ts
+@@ -1,6 +1,7 @@
+ import { verifyWebhook } from "@clerk/express/webhooks";
+ import { Request, Response } from "express";
+ import User from "../models/User.js";
++import { alertOps, errorText } from "../utils/telegram.js";
+ 
+ export const clerkWebhook = async (req: Request, res: Response) => {
+   let evt;
+@@ -47,6 +48,7 @@ export const clerkWebhook = async (req: Request, res: Response) => {
+     return res.json({ success: true, message: "Webhook received" });
+   } catch (err) {
+     console.error("Error processing webhook:", err);
++    alertOps(`⚠️ <b>Clerk webhook failed</b> (user sync)\n<code>${errorText(err)}</code>`, { key: "clerk-webhook" });
+     return res.status(500).send("Error processing webhook");
+   }
+ };
+diff --git a/server/middleware/validate.ts b/server/middleware/validate.ts
+index 883d14d..9bc1119 100644
+--- a/server/middleware/validate.ts
++++ b/server/middleware/validate.ts
+@@ -1,5 +1,6 @@
+ import { NextFunction, Request, Response } from "express";
+ import multer from "multer";
++import { alertOps, errorText, escapeHtml } from "../utils/telegram.js";
+ 
+ const OBJECT_ID = /^[a-f\d]{24}$/i;
+ 
+@@ -26,7 +27,7 @@ export const notFound = (req: Request, res: Response) => {
+ // eslint-disable-next-line @typescript-eslint/no-unused-vars
+ export const errorHandler = (
+   err: any,
+-  _req: Request,
++  req: Request,
+   res: Response,
+   _next: NextFunction,
+ ) => {
+@@ -40,7 +41,11 @@ export const errorHandler = (
+   }
+ 
+   const status = err?.status && err.status < 600 ? err.status : 500;
+-  if (status >= 500) console.error("Unhandled error:", err);
++  if (status >= 500) {
++    console.error("Unhandled error:", err);
++    const route = `${req.method} ${req.baseUrl}${req.route?.path ?? ""}`;
++    alertOps(`⚠️ <b>${status}</b> ${escapeHtml(route)}\n<code>${errorText(err)}</code>`, { key: `err:${route}` });
++  }
+   res.status(status).json({
+     success: false,
+     message:
+diff --git a/server/server.ts b/server/server.ts
+index ce9972b..a1901b8 100644
+--- a/server/server.ts
++++ b/server/server.ts
+@@ -24,6 +24,20 @@ import {
+   SupportRouter,
+ } from "./routes/miscRoutes.js";
+ import { errorHandler, notFound } from "./middleware/validate.js";
++import { health, healthDetails } from "./controllers/healthController.js";
++import { alertOps, errorText, escapeHtml, sendTelegram } from "./utils/telegram.js";
++
++// A crash is restarted by Docker; tell the owner first (Telegram is a no-op when not configured).
++process.on("unhandledRejection", async (reason: any) => {
++  console.error("Unhandled rejection:", reason);
++  await sendTelegram(`🔴 <b>API crashed</b> (unhandled rejection, restarting)\n<code>${errorText(reason)}</code>`, { key: "crash", cooldownMs: 60_000 });
++  process.exit(1);
++});
++process.on("uncaughtException", async (error: any) => {
++  console.error("Uncaught exception:", error);
++  await sendTelegram(`🔴 <b>API crashed</b> (uncaught exception, restarting)\n<code>${errorText(error)}</code>`, { key: "crash", cooldownMs: 60_000 });
++  process.exit(1);
++});
+ 
+ const app = express();
+ app.set("trust proxy", 1); // behind Vercel / a load balancer
+@@ -40,17 +54,20 @@ const allowedOrigins = process.env.CLIENT_URL?.split(",")
+   .map((o) => o.trim())
+   .filter(Boolean);
+ app.use(cors(allowedOrigins?.length ? { origin: allowedOrigins, credentials: true } : undefined));
+-app.use(express.json({ limit: "1mb" }));
+-app.use(clerkMiddleware());
+-
+-const port = process.env.PORT || 3000;
+ 
++// Status endpoints are registered BEFORE clerkMiddleware(). With Clerk development keys, Clerk
++// redirects browser-like requests (uptime monitors, link checkers) to its handshake URL, which
++// makes a healthy server look broken.
+ app.get("/", (_req: Request, res: Response) => {
+   res.send("Server is Live!");
+ });
+-app.get("/health", (_req: Request, res: Response) => {
+-  res.json({ success: true, uptime: process.uptime() });
+-});
++app.get("/health", health); // 200 only if the API and MongoDB both answer, else 503
++app.get("/health/details", healthDetails); // needs header x-health-token (HEALTH_TOKEN)
++
++app.use(express.json({ limit: "1mb" }));
++app.use(clerkMiddleware());
++
++const port = process.env.PORT || 3000;
+ 
+ app.use("/api/products", ProductRouter);
+ app.use("/api/cart", CartRouter);
+@@ -78,6 +95,7 @@ await makeAdmin();
+ if (!process.env.VERCEL) {
+   app.listen(port, () => {
+     console.log(`Server is running at http://localhost:${port}`);
++    alertOps(`🟢 API started (${escapeHtml(process.env.NODE_ENV || "development")})`, { key: "boot", cooldownMs: 30_000 });
+   });
+ }
+ 
+diff --git a/server/utils/http.ts b/server/utils/http.ts
+index cbc5cf6..dd7b5af 100644
+--- a/server/utils/http.ts
++++ b/server/utils/http.ts
+@@ -1,4 +1,5 @@
+ import { Response } from "express";
++import { alertOps, errorText, escapeHtml } from "./telegram.js";
+ 
+ /**
+  * Maps common Mongoose errors to proper HTTP codes and avoids leaking
+@@ -30,6 +31,7 @@ export const sendError = (
+     message = error.message;
+   } else {
+     console.error(fallback + ":", error);
++    alertOps(`⚠️ <b>500</b> ${escapeHtml(fallback)}\n<code>${errorText(error)}</code>`, { key: `500:${fallback}` });
+     if (process.env.NODE_ENV !== "production") {
+       message = error?.message || fallback;
+     }
+diff --git a/server/utils/notify.ts b/server/utils/notify.ts
+index adce9b1..a8ba441 100644
+--- a/server/utils/notify.ts
++++ b/server/utils/notify.ts
+@@ -1,5 +1,6 @@
+ import Notification from "../models/Notification.js";
+ import User from "../models/User.js";
++import { alertOps, escapeHtml } from "./telegram.js";
+ 
+ type Payload = {
+   type: string; // order | delivery | shop | payment | support | system
+@@ -47,6 +48,7 @@ export const notify = async (userIds: any, payload: Payload) => {
+ };
+ 
+ export const notifyAdmins = async (payload: Payload) => {
++  alertOps(`🔔 <b>${escapeHtml(payload.title)}</b>${payload.body ? "\n" + escapeHtml(payload.body) : ""}`);
+   const admins = await User.find({ role: "admin" }).select("_id");
+   await notify(admins.map((a) => a._id), payload);
+ };
+diff --git a/server/utils/telegram.ts b/server/utils/telegram.ts
+new file mode 100644
+index 0000000..7c1b799
+--- /dev/null
++++ b/server/utils/telegram.ts
+@@ -0,0 +1,92 @@
++/**
++ * Telegram alerts for the person running the server (not for customers).
++ *
++ * Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID (optional APP_LABEL) to turn it on.
++ * Without them every function here is a silent no-op, so it is safe to ship.
++ *
++ * - Never throws and never blocks a request: callers use alertOps() (fire and forget).
++ * - Flood protection: at most 20 messages per rolling minute, and `key` + `cooldownMs`
++ *   lets noisy events (like a repeating 500 error) alert once per cooldown.
++ */
++
++const MAX_PER_MINUTE = 20;
++const MAX_KEYS = 500;
++
++let windowStart = 0;
++let sentInWindow = 0;
++const lastByKey = new Map<string, number>();
++
++const token = () => process.env.TELEGRAM_BOT_TOKEN?.trim();
++const chat = () => process.env.TELEGRAM_CHAT_ID?.trim();
++
++export const telegramConfigured = () => Boolean(token() && chat());
++
++/** Escape text that goes inside a Telegram HTML message. */
++export const escapeHtml = (value: unknown) =>
++  String(value ?? "")
++    .replace(/&/g, "&amp;")
++    .replace(/</g, "&lt;")
++    .replace(/>/g, "&gt;");
++
++/** Short, escaped, single-line version of an error for use in a message. */
++export const errorText = (error: any, max = 300) =>
++  escapeHtml(String(error?.message ?? error ?? "unknown error").replace(/\s+/g, " ").slice(0, max));
++
++type Options = {
++  /** Same key within cooldownMs is sent only once. */
++  key?: string;
++  /** Default 10 minutes. */
++  cooldownMs?: number;
++};
++
++/** Returns true when Telegram accepted the message. */
++export const sendTelegram = async (text: string, options: Options = {}): Promise<boolean> => {
++  try {
++    if (!telegramConfigured()) return false;
++
++    const now = Date.now();
++    if (options.key) {
++      const last = lastByKey.get(options.key) ?? 0;
++      if (now - last < (options.cooldownMs ?? 10 * 60_000)) return false;
++      lastByKey.set(options.key, now);
++      if (lastByKey.size > MAX_KEYS) {
++        const oldest = [...lastByKey.entries()].sort((a, b) => a[1] - b[1]).slice(0, MAX_KEYS / 2);
++        for (const [k] of oldest) lastByKey.delete(k);
++      }
++    }
++
++    if (now - windowStart > 60_000) {
++      windowStart = now;
++      sentInWindow = 0;
++    }
++    if (sentInWindow >= MAX_PER_MINUTE) return false;
++    sentInWindow++;
++
++    const label = escapeHtml(process.env.APP_LABEL?.trim() || "estore");
++    const response = await fetch(`https://api.telegram.org/bot${token()}/sendMessage`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({
++        chat_id: chat(),
++        text: `<b>${label}</b>\n${text}`.slice(0, 4000),
++        parse_mode: "HTML",
++        disable_web_page_preview: true,
++      }),
++      signal: AbortSignal.timeout(8000),
++    });
++    if (!response.ok) {
++      console.error("Telegram send failed: HTTP", response.status);
++      return false;
++    }
++    return true;
++  } catch (error: any) {
++    // log the message only: it must never contain the bot token
++    console.error("Telegram send error:", error?.name || "error");
++    return false;
++  }
++};
++
++/** Fire and forget. Use this inside request handlers. */
++export const alertOps = (text: string, options?: Options) => {
++  void sendTelegram(text, options);
++};

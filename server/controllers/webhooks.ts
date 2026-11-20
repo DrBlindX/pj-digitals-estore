@@ -1,6 +1,7 @@
 import { verifyWebhook } from "@clerk/express/webhooks";
 import { Request, Response } from "express";
 import User from "../models/User.js";
+import { alertOps, errorText } from "../utils/telegram.js";
 
 export const clerkWebhook = async (req: Request, res: Response) => {
   let evt;
@@ -47,6 +48,7 @@ export const clerkWebhook = async (req: Request, res: Response) => {
     return res.json({ success: true, message: "Webhook received" });
   } catch (err) {
     console.error("Error processing webhook:", err);
+    alertOps(`⚠️ <b>Clerk webhook failed</b> (user sync)\n<code>${errorText(err)}</code>`, { key: "clerk-webhook" });
     return res.status(500).send("Error processing webhook");
   }
 };

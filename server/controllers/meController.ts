@@ -85,6 +85,7 @@ export const getMeta = async (_req: Request, res: Response) => {
       paymentStatuses: PAYMENT_STATUSES,
       paymentMethods: PAYMENT_METHODS,
       // which options the checkout screen should offer
+      apiVersion: "4.1", // lets the web app detect an outdated server
       cashOnDelivery: settings ? settings.allowCod : true,
       onlinePayments: razorpayConfigured(),
       // shown on the storefront when an admin sets them

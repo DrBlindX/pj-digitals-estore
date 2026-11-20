@@ -1,4 +1,5 @@
 import { Response } from "express";
+import { alertOps, errorText, escapeHtml } from "./telegram.js";
 
 /**
  * Maps common Mongoose errors to proper HTTP codes and avoids leaking
@@ -30,6 +31,7 @@ export const sendError = (
     message = error.message;
   } else {
     console.error(fallback + ":", error);
+    alertOps(`⚠️ <b>500</b> ${escapeHtml(fallback)}\n<code>${errorText(error)}</code>`, { key: `500:${fallback}` });
     if (process.env.NODE_ENV !== "production") {
       message = error?.message || fallback;
     }

@@ -265,15 +265,26 @@ export const adminListAds = async (req: Request, res: Response) => {
     const [total, ads] = await Promise.all([
       Advertisement.countDocuments(query),
       Advertisement.find(query)
-        .populate("shop", "name location")
+        .populate("shop", "name location status")
         .sort("-createdAt")
         .skip((page - 1) * limit)
         .limit(limit),
     ]);
 
+    // explain, per ad, whether customers can see it right now (and if not, why)
+    const now = Date.now();
+    const withState = ads.map((ad: any) => {
+      const reasons: string[] = [];
+      if (ad.status !== "approved") reasons.push(`Status is "${ad.status}" - it must be approved`);
+      if (ad.shop?.status !== "approved") reasons.push(`Shop is "${ad.shop?.status ?? "missing"}" - only approved shops are advertised`);
+      if (ad.startsAt && new Date(ad.startsAt).getTime() > now) reasons.push("Start date is in the future");
+      if (ad.endsAt && new Date(ad.endsAt).getTime() < now) reasons.push("End date has passed");
+      return { ...ad.toObject(), liveState: { live: reasons.length === 0, reasons } };
+    });
+
     res.json({
       success: true,
-      data: ads,
+      data: withState,
       pagination: { total, page, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
