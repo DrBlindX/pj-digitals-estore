@@ -16,7 +16,8 @@
         "backgroundColor": "#F5F7FA",
         "foregroundImage": "../shared/assets/nearby-logo.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "versionCode": 4
     },
     "web": {
       "output": "static",
@@ -39,7 +40,8 @@
           "image": "../shared/assets/nearby-logo.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      "./mobile-build.cjs"
     ],
     "experiments": {
       "typedRoutes": true,

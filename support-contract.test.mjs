@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { buildSupportPayload, submitSupport, loadSupport } from './shared/support.ts';
+const draft = { kind: 'problem', subject: ' Login ', message: ' Button does not open ', steps: ' Open menu ' };
+const payload = buildSupportPayload(draft, 'Delivery', 'android');
+assert.equal(payload.category, 'other');
+assert.equal(payload.subject, '[Delivery problem] Login');
+assert.ok(payload.message.includes('\n\nSteps to reproduce:\nOpen menu'));
+assert.ok(payload.message.endsWith('Sent from NearBy Delivery (android).'));
+assert.throws(() => buildSupportPayload({ ...draft, subject: ' ' }, 'Shop', 'android'));
+assert.throws(() => buildSupportPayload({ ...draft, message: 'x'.repeat(3001) }, 'Shop', 'android'));
+assert.ok(buildSupportPayload({ ...draft, subject: 's'.repeat(140), message: 'm'.repeat(3000), steps: 's'.repeat(500) }, 'Customer', 'android').message.length < 4000);
+let calls = 0;
+const request = async (path, options) => { calls++; assert.equal(path, '/api/support'); assert.equal(options.headers.Authorization, 'Bearer test-token'); assert.equal(options.method, 'POST'); assert.deepEqual(JSON.parse(options.body), payload); return new Response(JSON.stringify({success:true,data:{_id:'ticket-1',subject:payload.subject,status:'open'}})); };
+assert.equal((await submitSupport(request, 'test-token', draft, 'Delivery', 'android'))._id, 'ticket-1');
+await assert.rejects(submitSupport(request, '', draft, 'Delivery', 'android'), /Sign in/);
+assert.equal(calls, 1);
+await assert.rejects(submitSupport(async()=>new Response('<html>error</html>'), 'test-token', draft, 'Delivery', 'android'), /did not confirm/);
+await assert.rejects(submitSupport(async()=>new Response(JSON.stringify({success:false})), 'test-token', draft, 'Delivery', 'android'), /did not confirm/);
+const controller = new AbortController();
+const list = await loadSupport(async(path, options)=>{assert.equal(path,'/api/support');assert.equal(options.signal,controller.signal);return new Response(JSON.stringify({success:true,data:[{_id:'one',subject:'first',status:null},{_id:'one',subject:'latest',status:'resolved'},{_id:'two',subject:'second',status:{}},{}]}));},'test-token',controller.signal);
+assert.equal(list.length,2); assert.equal(list[0].subject,'latest'); assert.equal(list[1].status,'open');
+await assert.rejects(loadSupport(async()=>new Response(JSON.stringify({success:true,data:{}})),'test-token'),/Unable/);
+console.log('Support contract tests passed: validation, payload limits, authentication, confirmation, malformed responses, deduplication and cancellation signal.');
+

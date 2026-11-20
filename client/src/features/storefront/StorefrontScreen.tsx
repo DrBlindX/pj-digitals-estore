@@ -1,3 +1,5 @@
+import { shopCategories } from '../../../../shared/categories';
+import { registerScreenBack } from '../../../../shared/mobile';
 import { groupSupermarketProducts, supermarketOffers } from './utils/supermarketProducts';
 import { useSavedAddresses } from './hooks/useSavedAddresses';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -6,7 +8,7 @@ import BrandLogo from '@/components/BrandLogo';
 import { notify } from '@/lib/notifications';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Redirect, router, useLocalSearchParams, type Href } from 'expo-router';
+import { Redirect, router, usePathname, useLocalSearchParams, type Href } from 'expo-router';
 import { Animated, Easing, KeyboardAvoidingView, Modal, Platform, Pressable, RefreshControl, ScrollView, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import WebStoreHeader from './components/WebStoreHeader';
 import { createWebStyles } from './styles/webStyles';
@@ -39,16 +41,19 @@ import { useCustomerCart, type BasketLine } from './hooks/useCustomerCart';
 import { useCustomerOrders } from './hooks/useCustomerOrders';
 
 export default function StorefrontScreen() {
+  const pathname = usePathname();
   const { width } = useWindowDimensions();
   const desktop = Platform.OS === 'web' && width >= 900;
   const { customer, signOut, getToken } = useCustomerAuth();
   const { checkout } = useLocalSearchParams<{ checkout?: string }>();
+  const tabHistory = useRef<Tab[]>([]);
   const [tab, setTabState] = useState<Tab>('Home');
   function setTab(next: Tab) {
     if (Platform.OS === 'web' && next === 'Account') {
       router.push('/account' as Href);
       return;
     }
+    if (next !== tab) tabHistory.current.push(tab);
     setTabState(next);
   }
   const pageScroll = useRef<ScrollView>(null);
@@ -116,7 +121,7 @@ export default function StorefrontScreen() {
   const [sortBy, setSortBy] = useState<string>('Featured');
   const [storeId, setStoreId] = useState<StoreId>('all');
   const [category, setCategory] = useState<CategoryFilter>('All');
-  const [storeCategory, setStoreCategory] = useState<(typeof categories)[number]>('Electronics');
+  const [storeCategory, setStoreCategory] = useState<(typeof shopCategories)[number]>('Electronics');
   const [search, setSearch] = useState('');
   const [supermarketSearch, setSupermarketSearch] = useState('');
   const [supermarketCategory, setSupermarketCategory] = useState<(typeof categories)[number] | null>(null);
@@ -128,6 +133,17 @@ export default function StorefrontScreen() {
   const [detailError, setDetailError] = useState('');
   const detailRequest = useRef(0);
   const supermarketAddLock = useRef(false);
+  useEffect(() => registerScreenBack(() => {
+    if (Platform.OS !== 'android' || pathname !== '/') return false;
+    if (locationOpen) { setLocationOpen(false); return true; }
+    if (drawerOpen) { setDrawerOpen(false); return true; }
+    if (selectedProduct) { setSelectedProduct(null); return true; }
+    if (selectedOrder) { setSelectedOrder(null); return true; }
+    if (tab !== 'Home') { setTabState(tabHistory.current.pop() ?? 'Home'); return true; }
+    tabHistory.current = [];
+    return false;
+  }), [drawerOpen, locationOpen, selectedProduct, selectedOrder, tab, pathname]);
+
   const getStore = (id: StoreId) => catalogue.shops.find(shop => shop.id === id) ?? products.find(product => product.store === id)?.shop ?? getFallbackStore(id);
   const locationShops = catalogue.shops.filter(shop => shop.location === deliveryLocation);
   const locationProducts = products.filter(product => !product.shop?.location || product.shop.location === deliveryLocation);
@@ -272,9 +288,9 @@ export default function StorefrontScreen() {
       <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>Start shopping</Text><Text style={styles.sectionHint}>Choose your path</Text></View>
       <View style={styles.homeStoreGrid}>
         <TouchableOpacity style={styles.homeStoreCard} onPress={() => { setSelectedProduct(null); setTab('Supermarket'); }} accessibilityRole="button" accessibilityLabel="Browse supermarket">
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <InterfaceIcon name="grid" size={22} color={palette.primaryText} />
-            <Text style={[styles.storeBlockName, { marginTop: 0, textAlign: 'center', flexShrink: 1 }]}>Supermarket</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <InterfaceIcon name="grid" size={20} color={palette.primaryText} />
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.storeBlockName, { marginTop: 0, textAlign: 'center', flexShrink: 1 }]}>Supermarket</Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.homeStoreCard} onPress={() => { setSelectedProduct(null); setStoreId('all'); setCategory('All'); setSearch(''); setTab('Shops'); }} accessibilityRole="button" accessibilityLabel="Browse shops by name">
@@ -306,7 +322,7 @@ export default function StorefrontScreen() {
         <View style={styles.searchBox}><Text style={styles.searchIcon}>⌕</Text><TextInput value={search} onChangeText={setSearch} placeholder="Search products..." placeholderTextColor={palette.muted} style={styles.searchInput} accessibilityLabel="Search products" returnKeyType="search" /><TouchableOpacity onPress={() => setSearch('')} accessibilityRole="button" accessibilityLabel="Clear search"><Text style={styles.clearSearch}>{search ? 'Clear' : ''}</Text></TouchableOpacity></View>
       <SearchSuggestions query={search} products={locationProducts.filter((product) => (storeId === 'all' || product.store === storeId) && (category === 'All' || product.category === category))} onSelect={setSearch} />
         <View style={styles.filterGroup}><Text style={styles.filterLabel}>STORE</Text><StorePicker styles={styles} stores={[stores[0], ...locationShops]} value={storeId} onChange={setStoreId} /></View>
-        <View style={styles.filterGroup}><Text style={styles.filterLabel}>CATEGORY</Text><CategoryPicker styles={styles} value={category} onChange={setCategory} options={categories} /></View>
+        <View style={styles.filterGroup}><Text style={styles.filterLabel}>CATEGORY</Text><CategoryPicker styles={styles} value={category} onChange={setCategory} options={shopCategories} /></View>
         <View style={styles.filterGroup}><Text style={styles.filterLabel}>SORT BY</Text><CategoryPicker styles={styles} value={sortBy} onChange={setSortBy} options={sortOptions} /></View>
       </View>
       <View style={styles.sectionHeading}><Text style={styles.sectionTitle}>{visibleProducts.length} products</Text><Text style={styles.sectionHint}>{storeId === 'all' ? 'All stores' : getStore(storeId).name}</Text></View>
@@ -339,19 +355,19 @@ export default function StorefrontScreen() {
       <View style={styles.storeTypePanel}>
         <Text style={styles.storeTypeLabel}>STORE TYPE</Text>
         <View style={styles.storeTypeRow}>
-          {categories.map((type) => <TouchableOpacity key={type} onPress={() => setStoreCategory(type)} style={[styles.storeTypeButton, { minWidth: 130 }, storeCategory === type && styles.storeTypeSelected]} accessibilityRole="button" accessibilityState={{ selected: storeCategory === type }}>
+          {shopCategories.map((type) => <TouchableOpacity key={type} onPress={() => setStoreCategory(type)} style={[styles.storeTypeButton, { minWidth: 130 }, storeCategory === type && styles.storeTypeSelected]} accessibilityRole="button" accessibilityState={{ selected: storeCategory === type }}>
             <Text style={[styles.storeTypeIcon, storeCategory === type && styles.storeTypeActiveText]}>{type === 'Bakery' ? '🥐' : type === 'Electronics' ? 'ϟ' : type === 'Computer Items' ? '▣' : type === 'Home Appliances' ? '⌂' : '▤'}</Text>
             <Text style={[styles.storeTypeText, storeCategory === type && styles.storeTypeActiveText]}>{type}</Text>
           </TouchableOpacity>)}
         </View>
       </View>
-      {locationShops.filter((store) => products.some((product) => product.store === store.id && product.category === storeCategory)).map((store) => {
+      {locationShops.filter((store) => products.some((product) => product.store === store.id && (store.category ?? product.category) === storeCategory)).map((store) => {
         const count = products.filter((product) => product.store === store.id).length;
         return <TouchableOpacity key={store.id} style={[styles.storeCard, storeId === store.id && styles.storeCardSelected]} onPress={() => openShop(store.id)} accessibilityRole="button">
           <Text style={styles.storeIcon}>{store.icon}</Text><View style={styles.storeCopy}><Text style={styles.storeName}>{store.name}</Text><Text style={styles.muted}>{store.area}</Text><Text style={styles.storeCount}>{count} products available  ·  Select store →</Text></View>
         </TouchableOpacity>;
       })}
-      {!locationShops.some((store) => products.some((product) => product.store === store.id && product.category === storeCategory)) ? <View style={styles.emptyState}><Text style={styles.emptyTitle}>{catalogue.loading ? 'Loading shops…' : catalogue.error || products.some(product => product.category === storeCategory && product.shopDataStatus === 'unavailable') ? 'Shop information unavailable' : `No ${storeCategory.toLowerCase()} shops listed`}</Text><Text style={styles.muted}>{catalogue.error || products.some(product => product.category === storeCategory && product.shopDataStatus === 'unavailable') ? 'The catalogue does not include complete seller and location details for these products.' : 'Try another store type or change your location.'}</Text></View> : null}
+      {!locationShops.some((store) => products.some((product) => product.store === store.id && (store.category ?? product.category) === storeCategory)) ? <View style={styles.emptyState}><Text style={styles.emptyTitle}>{catalogue.loading ? 'Loading shops…' : catalogue.error || products.some(product => (product.shop?.category ?? product.category) === storeCategory && product.shopDataStatus === 'unavailable') ? 'Shop information unavailable' : `No ${storeCategory.toLowerCase()} shops listed`}</Text><Text style={styles.muted}>{catalogue.error || products.some(product => (product.shop?.category ?? product.category) === storeCategory && product.shopDataStatus === 'unavailable') ? 'The catalogue does not include complete seller and location details for these products.' : 'Try another store type or change your location.'}</Text></View> : null}
     </>;
   }
 
@@ -400,7 +416,7 @@ export default function StorefrontScreen() {
 
   function renderAccount() { return Platform.OS === 'web' ? <Redirect href={'/account' as Href} /> : <><Text style={styles.pageTitle}>Account settings</Text><Text style={styles.pageIntro}>Your profile and sign-in preferences.</Text><AccountSettings /></>; }
 
-  function renderCustomerCare() { return <><Text style={styles.pageTitle}>Customer care</Text><Text style={styles.pageIntro}>Help for this demo store.</Text><View style={styles.menuCard}><View><Text style={styles.storeName}>Where is my order?</Text><Text style={styles.muted}>See My Orders after demo checkout.</Text></View></View><View style={styles.menuCard}><View><Text style={styles.storeName}>Can I pay online?</Text><Text style={styles.muted}>Checkout is a demo and takes no payment.</Text></View></View><Text style={styles.formNote}>Add a real support contact before publishing.</Text></>; }
+  function renderCustomerCare() { return <><Text style={styles.pageTitle}>Customer care</Text><Text style={styles.pageIntro}>Share feedback or report an issue with NearBy.</Text>{([{ kind: 'feedback', label: 'Send feedback', copy: 'Tell us what is working and what we can improve.' }, { kind: 'problem', label: 'Report a problem', copy: 'Let support know about an app issue.' }] as const).map(item => <TouchableOpacity key={item.kind} accessibilityRole="button" style={styles.menuCard} onPress={() => router.push({ pathname: '/support', params: { kind: item.kind } } as Href)}><View style={{ flex: 1 }}><Text style={styles.storeName}>{item.label}</Text><Text style={styles.muted}>{item.copy}</Text></View><Text style={styles.menuArrow}>›</Text></TouchableOpacity>)}</>; }
 
   function renderMore() {
     const sections: Array<{ icon: string; title: string; tab: Tab }> = [
@@ -539,7 +555,7 @@ export default function StorefrontScreen() {
         <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerTranslateX }] }]}>
           <View style={styles.drawerHeader}><View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}><BrandLogo size={38} /><View><Text style={styles.drawerBrand}>NearBy</Text><Text style={styles.drawerSub}>THODUPUZHA · KERALA</Text></View></View><TouchableOpacity onPress={closeDrawer} style={styles.drawerClose} accessibilityRole="button" accessibilityLabel="Close navigation menu"><Text style={styles.drawerCloseText}>×</Text></TouchableOpacity></View>
           <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator keyboardShouldPersistTaps="handled">
-          <View style={styles.drawerDelivery}><Text style={styles.drawerDeliveryIcon}>◷</Text><Text style={styles.drawerDeliveryText}>Delivery within 12 hours</Text></View>
+          <View style={styles.drawerDelivery}><Text style={styles.drawerDeliveryIcon}>◷</Text><Text style={styles.drawerDeliveryText}>Delivery within 24 hours</Text></View>
           <TouchableOpacity style={styles.drawerAuth} onPress={() => { closeDrawer(); if (customer) { setSelectedProduct(null); setTab('Account'); } else router.push('/login' as Href); }} accessibilityRole="button"><Text style={styles.drawerAuthKicker}>NearBy ACCOUNT</Text><Text style={styles.drawerAuthText}>{customer ? customer.name : 'Sign in or create account  →'}</Text></TouchableOpacity>
           {primaryDrawerLinks.map((item) => <TouchableOpacity key={item.tab} style={[styles.drawerItem, tab === item.tab && styles.drawerItemActive]} onPress={() => chooseTab(item.tab)} accessibilityRole="button" accessibilityState={{ selected: tab === item.tab }}><Text style={[styles.drawerItemIcon, tab === item.tab && styles.drawerItemTextActive]}>{item.icon}</Text><Text style={[styles.drawerItemText, tab === item.tab && styles.drawerItemTextActive]}>{item.label}</Text></TouchableOpacity>)}
           <View style={styles.drawerDivider} /><Text style={styles.drawerSectionLabel}>YOUR NearBy</Text>
@@ -547,6 +563,7 @@ export default function StorefrontScreen() {
             {(['light', 'dark'] as const).map((option) => <TouchableOpacity key={option} onPress={() => setMode(option)} accessibilityRole="button" accessibilityLabel={`${option} mode`} accessibilityState={{ selected: mode === option }} style={[styles.storeTypeButton, mode === option && styles.storeTypeSelected]}><Text style={[styles.storeTypeText, mode === option && styles.storeTypeActiveText]}>{option === 'light' ? '☀ Light' : '☾ Dark'}</Text></TouchableOpacity>)}
           </View>
           {accountDrawerLinks.map((item) => <TouchableOpacity key={item.tab} style={[styles.drawerItem, tab === item.tab && styles.drawerItemActive]} onPress={() => chooseTab(item.tab)} accessibilityRole="button" accessibilityState={{ selected: tab === item.tab }}><Text style={[styles.drawerItemIcon, tab === item.tab && styles.drawerItemTextActive]}>{item.icon}</Text><Text style={[styles.drawerItemText, tab === item.tab && styles.drawerItemTextActive]}>{item.label}</Text></TouchableOpacity>)}
+          {(['feedback', 'problem'] as const).map(kind => <TouchableOpacity key={kind} accessibilityRole="button" style={styles.drawerItem} onPress={() => { closeDrawer(); router.push({ pathname: '/support', params: { kind } } as Href); }}><Text style={styles.drawerItemIcon}>{kind === 'feedback' ? '✎' : '!'}</Text><Text style={styles.drawerItemText}>{kind === 'feedback' ? 'Feedback' : 'Report a problem'}</Text></TouchableOpacity>)}
           <View style={styles.drawerDivider} /><Text style={styles.drawerSectionLabel}>JOB with NearBy</Text>
           {partnerDrawerLinks.map(item => <TouchableOpacity key={item.tab} style={[styles.drawerItem, tab === item.tab && styles.drawerItemActive]} onPress={() => chooseTab(item.tab)} accessibilityRole="button" accessibilityState={{ selected: tab === item.tab }}><Text style={[styles.drawerItemIcon, tab === item.tab && styles.drawerItemTextActive]}>{item.icon}</Text><Text style={[styles.drawerItemText, tab === item.tab && styles.drawerItemTextActive]}>{item.label}</Text></TouchableOpacity>)}
           </ScrollView>

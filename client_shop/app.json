@@ -29,7 +29,9 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "@clerk/expo-native-components/app.plugin.js",
+      "./mobile-build.cjs"
     ],
     "slug": "tdpstore-shop",
     "version": "1.0.0",
@@ -37,8 +39,10 @@
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
         "foregroundImage": "../shared/assets/nearby-logo.png"
-      }
+      },
+      "package": "com.nearby.shop",
+      "versionCode": 4
     },
-    "name": "TDP Store Shop"
+    "name": "NearBy Shop"
   }
 }

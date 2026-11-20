@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NearBy",
+    "name": "NearBy Admin",
     "slug": "tdpstore-admin",
     "scheme": "tdpstore-admin",
     "version": "1.0.0",
@@ -15,7 +15,9 @@
           "appleSignIn": false
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "@clerk/expo-native-components/app.plugin.js",
+      "./mobile-build.cjs"
     ],
     "experiments": {
       "typedRoutes": true
@@ -28,7 +30,9 @@
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
         "foregroundImage": "../shared/assets/nearby-logo.png"
-      }
+      },
+      "package": "com.nearby.admin",
+      "versionCode": 4
     },
     "web": {
       "favicon": "../shared/assets/nearby-logo.png"

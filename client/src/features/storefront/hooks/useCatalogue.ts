@@ -1,3 +1,4 @@
+import { shopCategories } from '../../../../../shared/categories';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getProduct, getProducts, type ServerProduct } from '@/services/products';
 import type { Product, Store } from '../data/types';
@@ -11,7 +12,9 @@ export function toStoreProduct(item: ServerProduct): Product {
   const name = typeof source?.name === 'string' ? source.name.trim() : '';
   const location = typeof source?.location === 'string' ? source.location.trim() : '';
   const knownLocation = location === 'Thodupuzha' || location === 'Muttom' ? location : undefined;
-  const shop: Store | undefined = id && name ? { id, name, location: knownLocation, area: knownLocation ?? 'Shop location unavailable', icon: category === 'Bakery' ? '🥐' : '▦', category } : undefined;
+  const sellerCategories = Array.isArray(source?.categories) ? source.categories : [];
+  const shopType = shopCategories.find(value => sellerCategories.some(raw => typeof raw === 'string' && raw.trim().toLowerCase() === value.toLowerCase())) ?? (['CCTV items', 'Power tools', 'Home decor', 'Mobilephone', 'Automobiles', 'Power inverter and solar'].includes(category ?? '') ? 'Electronics' : category);
+  const shop: Store | undefined = id && name ? { id, name, location: knownLocation, area: knownLocation ?? 'Shop location unavailable', icon: category === 'Bakery' ? '🥐' : '▦', category: shopType } : undefined;
   return {
     id: item._id, name: item.name, description: item.description, price: item.price,
     stock: item.stock, images: item.images, sizes: item.sizes, serverCategory: item.category,

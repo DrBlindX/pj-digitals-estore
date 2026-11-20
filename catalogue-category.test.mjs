@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { productCategories, shopCategories } from './shared/categories.ts';
+const require=createRequire(new URL('./client/package.json',import.meta.url));const ts=require('typescript');
+const source=readFileSync(new URL('./client/src/features/storefront/hooks/useCatalogue.ts',import.meta.url),'utf8');
+const body=source.slice(source.indexOf('export function toStoreProduct'),source.indexOf('export function useCatalogue'));
+const js=ts.transpileModule(body,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {toStoreProduct}=await import('data:text/javascript;base64,'+Buffer.from('const categories='+JSON.stringify(productCategories)+';const shopCategories='+JSON.stringify(shopCategories)+';'+js).toString('base64'));
+const item={_id:'123456789012345678901234',name:'Camera',category:' CCTV items ',description:'Camera',price:1000,stock:7,images:[],sizes:[],shop:{_id:'223456789012345678901234',name:'Local electronics',location:'Thodupuzha',categories:['Electronics']}};
+let result=toStoreProduct(item);assert.equal(result.category,'CCTV items');assert.equal(result.shop.category,'Electronics');assert.equal(result.shopDataStatus,'available');
+result=toStoreProduct({...item,category:'Medical store',shop:{...item.shop,categories:['Medical store']}});assert.equal(result.category,'Medical store');assert.equal(result.shop.category,'Medical store');
+result=toStoreProduct({...item,shop:null});assert.equal(result.category,'CCTV items');assert.equal(result.shopDataStatus,'unavailable');assert.equal(result.shop,undefined);
+result=toStoreProduct({...item,category:'Textiles'});assert.equal(result.category,'Textiles');assert.equal(result.shop.category,'Electronics');
+console.log('Catalogue category, seller shop type and unavailable seller mapping passed.');

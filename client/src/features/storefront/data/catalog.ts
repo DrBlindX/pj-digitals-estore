@@ -1,9 +1,10 @@
+import { productCategories } from '../../../../../shared/categories';
 import type { Product, Store, StoreId } from './types';
 
 import { palettes } from '../../../../../shared/theme';
 export type { Palette } from '../../../../../shared/theme';
 
-const categories = ['Electronics', 'Textiles', 'Home Appliances', 'Computer Items', 'Bakery'] as const;
+const categories = productCategories;
 const sortOptions = ['Featured', 'Price: low to high', 'Price: high to low'];
 const stores: Store[] = [
   { id: 'all', name: 'All local shops', area: 'Browse all participating stores', icon: '⌂' },

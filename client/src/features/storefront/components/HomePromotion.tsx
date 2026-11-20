@@ -6,10 +6,10 @@ import Text from './AppText';
 import InterfaceIcon from './InterfaceIcon';
 
 export const homePromotions = [
-  { eyebrow: 'YOUR TOWN. YOUR TIME.', title: 'At your door.\nWithin 12 hours.', copy: 'Your local favourites, delivered home. Discover a closer way to shop with NearBy.', action: 'Start shopping', stamp: '12 hr', caption: 'HOME DELIVERY', note: 'Closer shops. Quicker days.', ...promotionColors[0] },
+  { eyebrow: 'YOUR TOWN. YOUR TIME.', title: 'At your door.\nWithin 24 hours.', copy: 'Your local favourites, delivered home. Discover a closer way to shop with NearBy.', action: 'Start shopping', stamp: '24 hr', caption: 'HOME DELIVERY', note: 'Closer shops. Quicker days.', ...promotionColors[0] },
   { eyebrow: 'GOOD FINDS. GREAT VALUE.', title: 'Big on offers.\nClose to home.', copy: 'Discover our best offers from local shops. Make room for more of what you love.', action: 'Explore the catalogue', stamp: 'BEST', caption: 'OFFERS', note: 'A little more joy in every cart.', ...promotionColors[1] },
   { eyebrow: 'LOCAL SHOPS. ONE NEARBY.', title: 'Your favourites.\nAll together.', copy: 'Electronics, textiles, bakery and more. Find your everyday picks in one place.', action: 'Find your favourites', stamp: 'LOCAL', caption: 'FINDS', note: 'Your neighbourhood, in your pocket.', ...promotionColors[2] },
-  { eyebrow: 'LESS RUNNING AROUND.', title: 'Shop from home.\nWe bring it closer.', copy: 'Browse local finds, enjoy our best offers and get home delivery within 12 hours.', action: 'Shop with NearBy', stamp: '12 hr', caption: 'TO YOUR DOOR', note: 'More time for the things you love.', ...promotionColors[3] },
+  { eyebrow: 'LESS RUNNING AROUND.', title: 'Shop from home.\nWe bring it closer.', copy: 'Browse local finds, enjoy our best offers and get home delivery within 24 hours.', action: 'Shop with NearBy', stamp: '24 hr', caption: 'TO YOUR DOOR', note: 'More time for the things you love.', ...promotionColors[3] },
 ] as const;
 
 type Promotion = typeof homePromotions[number];

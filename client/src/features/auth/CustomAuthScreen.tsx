@@ -146,7 +146,7 @@ export default function CustomAuthScreen({ mode }: { mode: AuthMode }) {
               <Text style={styles.demoNote}>Your account is secured by Clerk. Use your own email address to sign up.</Text>
             </View>
 
-            <View style={styles.delivery}><Text style={styles.deliveryIcon}>◷</Text><Text style={styles.deliveryText}>Shop local stores. Delivered within 12 hours.</Text></View>
+            <View style={styles.delivery}><Text style={styles.deliveryIcon}>◷</Text><Text style={styles.deliveryText}>Shop local stores. Delivered within 24 hours.</Text></View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

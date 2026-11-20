@@ -1,0 +1,40 @@
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHostedAuth } from '@clerk/expo/hosted-auth';
+import { useAuth } from '../auth/clerkHooks';
+import { startHostedSignIn } from '../auth/hostedSignIn';
+import BrandLogo from '../components/BrandLogo';
+import { useShopUI } from '../components/ShopUI';
+
+export function ShopLoginScreen() {
+  const { C, S } = useShopUI();
+  const { startHostedAuth } = useHostedAuth();
+  const { isLoaded } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  async function signIn() {
+    if (pending.current || !isLoaded) return;
+    pending.current = true; setBusy(true); setError('');
+    try {
+      const result = await startHostedSignIn(() => startHostedAuth({ mode: 'sign-in' }));
+      if (mounted.current && !result.createdSessionId) setError(result.authSessionResult?.type === 'cancel' || result.authSessionResult?.type === 'dismiss' ? 'Sign-in was cancelled. You can try again.' : 'Sign-in did not finish. Please try again.');
+    } catch (cause) {
+      if (mounted.current) setError(cause instanceof Error ? cause.message : 'Unable to open Clerk sign-in.');
+    } finally { pending.current = false; if (mounted.current) setBusy(false); }
+  }
+  return <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
+    <View style={{ width: '100%', maxWidth: 440, alignSelf: 'center', gap: 16 }}>
+      <BrandLogo size={64} /><Text style={{ color: C.cyan, fontSize: 11, fontWeight: '600', letterSpacing: 1.2 }}>NEARBY · SHOP PARTNER</Text><Text style={{ color: C.text, fontSize: 30, fontWeight: '600', letterSpacing: -0.8, lineHeight: 38 }}>Welcome back.</Text><Text style={S.subtitle}>Sign in with your Clerk account.</Text>
+      <View style={[S.card, { padding: 24, gap: 18 }]}>
+        <Text style={S.name}>Sign in</Text><Text style={S.small}>Continue to Clerk to sign in and complete any verification steps.</Text>
+        {error ? <Text accessibilityRole="alert" style={{ color: C.red, lineHeight: 20 }}>{error}</Text> : null}
+        <Pressable disabled={busy || !isLoaded} accessibilityRole="button" accessibilityState={{ disabled: busy || !isLoaded, busy }} onPress={() => void signIn()} style={[S.btn, { minHeight: 48, opacity: busy || !isLoaded ? 0.6 : 1 }]}>{busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={S.btnText}>Continue with Clerk</Text>}</Pressable>
+      </View>
+      <Text style={[S.small, { lineHeight: 19 }]}>Sign in to continue to NearBy.</Text>
+    </View>
+  </ScrollView></SafeAreaView>;
+}

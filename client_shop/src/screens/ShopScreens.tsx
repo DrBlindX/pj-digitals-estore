@@ -1,3 +1,4 @@
+import { categoriesForShop } from '../../../shared/categories';
 import OrderConnection from '../components/OrderConnection';
 import { isActiveOrder, isActiveDelivery } from '../utils/orderSummary';
 import { getShopInsights } from '../utils/shopInsights';
@@ -30,22 +31,26 @@ function ProductRow({ product }: { product: Product }) { const { S } = useShopUI
 function Filter({ items, value, onChange }: { items: string[]; value: string; onChange: (value: string) => void }) { const { S } = useShopUI(); return <View style={S.chips}>{items.map((item) => <Pressable key={item} onPress={() => onChange(item)} style={[S.chip, item === value && S.chipOn]}><Text style={[S.chipText, item === value && S.chipTextOn]}>{item}</Text></Pressable>)}</View>; }
 function ProductModal({ visible, close }: { visible: boolean; close: () => void }) { const { C, S } = useShopUI();
  const { addProduct, shopCategory, productsBusy, productsLoading, productsError } = useShop();
+ const [productCategory, setProductCategory] = useState('');
+ const allowedCategories = categoriesForShop(shopCategory ?? '');
+ const selectedCategory = allowedCategories.includes(productCategory) ? productCategory : allowedCategories[0] ?? '';
  const [newImages, setNewImages] = useState<ProductImage[]>([]); const [name, setName] = useState(''); const [description, setDescription] = useState(''); const [price, setPrice] = useState(''); const [stock, setStock] = useState('');
  const save = async () => {
   if (!description.trim()) return Alert.alert('Add product', 'Enter a product description.');
   if (!newImages.length || newImages.length > 5) return Alert.alert('Add product', 'Select between 1 and 5 product images.');
   if (!name.trim() || !price || !Number.isFinite(Number(price)) || Number(price) < 0) return Alert.alert('Add product', 'Enter a product name and valid price.');
   if (!Number.isSafeInteger(Number(stock || 0)) || Number(stock || 0) < 0) return Alert.alert('Add product', 'Stock must be a whole number of zero or more.');
-  try { await addProduct({ name: name.trim(), description: description.trim(), price: Number(price), stock: Number(stock || 0), newImages }); }
+  try { await addProduct({ category: selectedCategory, name: name.trim(), description: description.trim(), price: Number(price), stock: Number(stock || 0), newImages }); }
   catch (cause) { return Alert.alert('Add product', cause instanceof Error ? cause.message : 'Unable to add product.'); }
   setName(''); setDescription(''); setPrice(''); setStock(''); setNewImages([]); close();
  };
  return <Modal visible={visible} transparent animationType="fade" onRequestClose={() => { if (!productsBusy) close(); }}><View style={S.modalShade}><ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} keyboardShouldPersistTaps="handled"><View style={S.modal}><View style={[S.row, { justifyContent: 'space-between' }]}><Text style={S.orderId}>Add a product</Text><Pressable disabled={productsBusy} onPress={close}><Text style={{ color: C.muted, fontSize: 22 }}>×</Text></Pressable></View>
+  <Text style={S.label}>PRODUCT CATEGORY</Text><Filter items={[...allowedCategories]} value={selectedCategory} onChange={setProductCategory} />
   <Text style={S.label}>PRODUCT NAME</Text><TextInput editable={!productsBusy} value={name} onChangeText={setName} placeholder="e.g. Bluetooth speaker" placeholderTextColor={C.muted} style={S.input} />
   <Text style={S.label}>DESCRIPTION</Text><TextInput editable={!productsBusy} accessibilityLabel="Product description" value={description} onChangeText={setDescription} multiline maxLength={1000} placeholder="Describe the product, features and specifications" placeholderTextColor={C.muted} textAlignVertical="top" style={[S.input, { minHeight: 100 }]} />
   <View style={S.row}><View style={{ flex: 1, marginRight: 7 }}><Text style={S.label}>PRICE (₹)</Text><TextInput editable={!productsBusy} value={price} onChangeText={setPrice} keyboardType="decimal-pad" placeholder="2,499" placeholderTextColor={C.muted} style={S.input} /></View><View style={{ flex: 1, marginLeft: 7 }}><Text style={S.label}>STARTING STOCK</Text><TextInput editable={!productsBusy} value={stock} onChangeText={setStock} keyboardType="number-pad" placeholder="0" placeholderTextColor={C.muted} style={S.input} /></View></View>
     <Text style={S.small}>Products below ₹500 require a minimum of 3 units per customer order. ₹500 and above allow 1 unit.</Text>
-  <Text style={[S.small, { marginBottom: 12 }]}>{shopCategory ? `Products are automatically listed under ${shopCategory}.` : 'Shop category unavailable. Contact the admin.'}</Text>
+  <Text style={[S.small, { marginBottom: 12 }]}>{shopCategory ? `Choose the product category for your ${shopCategory} shop.` : 'Shop category unavailable. Contact the admin.'}</Text>
   <ProductImages kept={[]} added={newImages} onChange={(_, images) => setNewImages(images)} disabled={productsBusy} />
   <Button disabled={productsBusy || productsLoading || !!productsError || !shopCategory} label={productsBusy ? 'Saving…' : 'Save product'} onPress={() => void save()} /><Text style={[S.small, { marginTop: 9 }]}>Saved to your approved shop after server confirmation.</Text></View></ScrollView></View></Modal>;
 }

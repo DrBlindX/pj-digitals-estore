@@ -1,3 +1,4 @@
+import MobileNavigation from '../components/MobileNavigation';
 import ShopClerkProvider from '../auth/ShopClerkProvider';
 import LowStockNotice from '../components/LowStockNotice';
 import BrandLogo from '../components/BrandLogo';
@@ -35,7 +36,7 @@ export default function ShopLayout() {
   if (!publishableKey) throw new Error('Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in client_shop/.env.local and restart Expo.');
   return <ShopThemeProvider><ShopClerkProvider publishableKey={publishableKey}><ShopAuthProvider><View style={{ flex: 1 }}>
     <View style={{ flex: 1 }} pointerEvents={loading ? 'none' : 'auto'} accessibilityElementsHidden={loading} importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'}><ServerConnection><ShopNavigation /></ServerConnection></View>
-    {loading ? <PartnerLoadingScreen onFinish={finishLoading} /> : null}
+    <MobileNavigation />{loading ? <PartnerLoadingScreen onFinish={finishLoading} /> : null}
   </View></ShopAuthProvider></ShopClerkProvider></ShopThemeProvider>;
 }
 
@@ -48,22 +49,23 @@ function ShopNavigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  if (!ready) return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.muted }}>Loading your account…</Text></View>;
+  if (!ready) return <View style={{ flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: C.muted }}>Loading your accountâ€¦</Text></View>;
   if (!account) return <ShopLoginScreen />;
   return <ShopDataProvider key={account.id}><Tabs backBehavior="history" screenOptions={{ headerShown: true, tabBarStyle: { display: 'none' }, header: () => <SafeAreaView edges={['top', 'left', 'right']} style={menuStyles.topBar}>
     <View style={menuStyles.topContent}>
       <BrandLogo size={40} />
-      <View style={{ flex: 1, minWidth: 0 }}><Text style={menuStyles.eyebrow} numberOfLines={1}>NEARBY · SHOP PARTNER</Text><Text style={menuStyles.topShop} numberOfLines={1}>{account.shopName}</Text></View>
+      <View style={{ flex: 1, minWidth: 0 }}><Text style={menuStyles.eyebrow} numberOfLines={1}>NEARBY Â· SHOP PARTNER</Text><Text style={menuStyles.topShop} numberOfLines={1}>{account.shopName}</Text></View>
       <Pressable accessibilityLabel="Open navigation menu" accessibilityRole="button" onPress={() => setMenuOpen(true)} style={menuStyles.menuButton}><MaterialCommunityIcons name="menu" size={25} color={C.cyan} /></Pressable>
     </View>
   </SafeAreaView> }}>
-    <Tabs.Screen name="hosted-auth-callback" options={{ href: null, headerShown: false }} />
+    <Tabs.Screen name="support" options={{ href: null, headerShown: false }} /><Tabs.Screen name="hosted-auth-callback" options={{ href: null, headerShown: false }} />
     {tabs.map(({ route, title, icon }) => <Tabs.Screen key={route} name={route} options={{ title, tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name={icon} color={color} size={size} /> }} />)}
   </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').filter(Boolean)[0] || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logoutError={logoutError} signingOut={signingOut} logout={() => { if (signingOut) return; setSigningOut(true); setLogoutError(''); void logout().then(() => setMenuOpen(false)).catch(() => setLogoutError('Unable to sign out. Please try again.')).finally(() => setSigningOut(false)); }} /><LowStockNotice /></ShopDataProvider>;
 }
 
 function RightMenu({ open, close, shopName, active, navigate, logout, logoutError, signingOut }: { open: boolean; close: () => void; shopName: string; active: string; navigate: (route: string) => void; logout: () => void; logoutError: string; signingOut: boolean }) {
   const { C, mode, setMode } = useShopUI();
+  const supportRouter = useRouter();
   const menuStyles = createMenuStyles(C);
   const { width } = useWindowDimensions();
   const panelWidth = Math.min(350, width * 0.88);
@@ -79,15 +81,16 @@ function RightMenu({ open, close, shopName, active, navigate, logout, logoutErro
       <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="Close navigation menu" accessibilityRole="button" />
       <Animated.View style={[menuStyles.panel, { width: panelWidth, transform: [{ translateX: Animated.multiply(slide, panelWidth) }] }]}>
         <SafeAreaView style={{ flex: 1 }}>
-          <View style={menuStyles.heading}><View style={{ marginRight: 12 }}><BrandLogo size={42} /></View><View style={{ flex: 1 }}><Text style={menuStyles.eyebrow}>NEARBY · SHOP PARTNER</Text><Text style={menuStyles.shop}>{shopName}</Text></View><Pressable accessibilityLabel="Close menu" accessibilityRole="button" onPress={close} style={{ padding: 10 }}><MaterialCommunityIcons name="close" size={24} color={C.text} /></Pressable></View>
+          <View style={menuStyles.heading}><View style={{ marginRight: 12 }}><BrandLogo size={42} /></View><View style={{ flex: 1 }}><Text style={menuStyles.eyebrow}>NEARBY Â· SHOP PARTNER</Text><Text style={menuStyles.shop}>{shopName}</Text></View><Pressable accessibilityLabel="Close menu" accessibilityRole="button" onPress={close} style={{ padding: 10 }}><MaterialCommunityIcons name="close" size={24} color={C.text} /></Pressable></View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 8 }}>
             {tabs.map(tab => <Pressable key={tab.route} accessibilityRole="button" accessibilityState={{ selected: active === tab.route }} onPress={() => navigate(tab.route)} style={[menuStyles.item, active === tab.route && menuStyles.selected]}>
               <MaterialCommunityIcons name={tab.icon} size={22} color={active === tab.route ? C.onPrimary : C.cyan} />
               <Text style={[menuStyles.label, active === tab.route && { color: C.onPrimary }]}>{tab.title}</Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={active === tab.route ? C.onPrimary : C.amber} />
             </Pressable>)}
+            {(['feedback', 'problem'] as const).map(kind => <Pressable key={kind} accessibilityRole="button" style={menuStyles.item} onPress={() => { close(); supportRouter.push({ pathname: '/support', params: { kind } } as Href); }}><MaterialCommunityIcons name={kind === 'feedback' ? 'message-outline' : 'alert-circle-outline'} size={22} color={C.cyan} /><Text style={menuStyles.label}>{kind === 'feedback' ? 'Feedback' : 'Report a problem'}</Text></Pressable>)}
           </ScrollView>
-          <View style={menuStyles.footer}><Pressable accessibilityRole="switch" accessibilityLabel="Dark mode" accessibilityState={{ checked: mode === 'dark' }} onPress={() => setMode(mode === 'dark' ? 'light' : 'dark')} style={menuStyles.item}><MaterialCommunityIcons name={mode === 'dark' ? 'weather-night' : 'white-balance-sunny'} color={C.cyan} size={22} /><Text style={menuStyles.label}>{mode === 'dark' ? 'Dark mode' : 'Light mode'}</Text><Text style={{ color: C.cyan }}>Switch</Text></Pressable><Pressable accessibilityRole="button" onPress={logout} disabled={signingOut} accessibilityState={{ disabled: signingOut, busy: signingOut }} style={menuStyles.item}><MaterialCommunityIcons name="logout" color={C.red} size={22} /><Text style={[menuStyles.label, { color: C.red }]}>{signingOut ? 'Signing out…' : 'Log out'}</Text></Pressable><Text accessibilityRole="alert" style={{ color: C.red, fontSize: 12 }}>{logoutError}</Text><Text style={menuStyles.location}>LOCAL ROOTS. NEW POSSIBILITIES.</Text></View>
+          <View style={menuStyles.footer}><Pressable accessibilityRole="switch" accessibilityLabel="Dark mode" accessibilityState={{ checked: mode === 'dark' }} onPress={() => setMode(mode === 'dark' ? 'light' : 'dark')} style={menuStyles.item}><MaterialCommunityIcons name={mode === 'dark' ? 'weather-night' : 'white-balance-sunny'} color={C.cyan} size={22} /><Text style={menuStyles.label}>{mode === 'dark' ? 'Dark mode' : 'Light mode'}</Text><Text style={{ color: C.cyan }}>Switch</Text></Pressable><Pressable accessibilityRole="button" onPress={logout} disabled={signingOut} accessibilityState={{ disabled: signingOut, busy: signingOut }} style={menuStyles.item}><MaterialCommunityIcons name="logout" color={C.red} size={22} /><Text style={[menuStyles.label, { color: C.red }]}>{signingOut ? 'Signing outâ€¦' : 'Log out'}</Text></Pressable><Text accessibilityRole="alert" style={{ color: C.red, fontSize: 12 }}>{logoutError}</Text><Text style={menuStyles.location}>LOCAL ROOTS. NEW POSSIBILITIES.</Text></View>
         </SafeAreaView>
       </Animated.View>
     </View>
