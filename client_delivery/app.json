@@ -6,15 +6,15 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/images/nearby-logo.png",
+    "icon": "../shared/assets/nearby-logo.png",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
-        "foregroundImage": "./assets/images/nearby-logo.png"
+        "foregroundImage": "../shared/assets/nearby-logo.png"
       }
     },
     "web": {
-      "favicon": "./assets/images/nearby-logo.png"
+      "favicon": "../shared/assets/nearby-logo.png"
     },
     "plugins": [
       "expo-router",
@@ -29,6 +29,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "ios": {
+      "icon": "../shared/assets/nearby-logo.png"
     }
   }
 }

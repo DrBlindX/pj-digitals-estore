@@ -1,3 +1,4 @@
+import { useAuth } from './clerkHooks';
 import { useEffect, useRef, useState } from 'react';
 import { useHostedAuth } from '@clerk/expo/hosted-auth';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -6,13 +7,14 @@ import { useAdminTheme } from '../context/AdminTheme';
 export default function AdminLogin() {
   const { palette: p } = useAdminTheme();
   const { startHostedAuth } = useHostedAuth();
+  const { isLoaded } = useAuth();
   const pending = useRef(false);
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function login() {
-    if (pending.current) return;
+    if (pending.current || !isLoaded) return;
     pending.current = true; setBusy(true); setError('');
     try {
       const result = await startHostedAuth({ mode: 'sign-in' });
@@ -24,6 +26,6 @@ export default function AdminLogin() {
     <BrandLogo size={64} /><Text style={{ color: p.primaryText, fontSize: 11, fontWeight: '600', letterSpacing: 1.2 }}>NEARBY · ADMIN</Text><Text style={{ color: p.text, fontSize: 30, fontWeight: '600', letterSpacing: -0.8, lineHeight: 38 }}>Welcome back.</Text>
     <Text style={{ color: p.muted, lineHeight: 22 }}>Sign in with Clerk. Your account needs admin access to continue.</Text>
     {error ? <Text accessibilityRole="alert" style={{ color: p.terracotta }}>{error}</Text> : null}
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={() => void login()} style={{ padding: 16, borderRadius: 10, backgroundColor: p.primary }}><Text style={{ color: p.onPrimary, textAlign: 'center' }}>{busy ? 'Signing in…' : 'Continue with Clerk'}</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy || !isLoaded, busy }} disabled={busy || !isLoaded} onPress={() => void login()} style={{ padding: 16, borderRadius: 10, backgroundColor: p.primary }}><Text style={{ color: p.onPrimary, textAlign: 'center' }}>{busy ? 'Signing in…' : 'Continue with Clerk'}</Text></Pressable>
   </View></ScrollView>;
 }

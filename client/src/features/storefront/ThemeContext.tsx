@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react';
 import { palettes, type Palette } from './data/catalog';
 
-type ThemeMode = 'light' | 'dark';
+import type { ThemeMode } from '../../../../shared/theme';
 const ThemeContext = createContext<{ mode: ThemeMode; palette: Palette; setMode: (mode: ThemeMode) => void }>({ mode: 'light', palette: palettes.light, setMode: () => {} });
 
 export function StoreThemeProvider({ children }: PropsWithChildren) {

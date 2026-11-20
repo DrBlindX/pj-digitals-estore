@@ -20,18 +20,18 @@
     "experiments": {
       "typedRoutes": true
     },
-    "icon": "./assets/images/nearby-logo.png",
+    "icon": "../shared/assets/nearby-logo.png",
     "ios": {
-      "icon": "./assets/images/nearby-logo.png"
+      "icon": "../shared/assets/nearby-logo.png"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
-        "foregroundImage": "./assets/images/nearby-logo.png"
+        "foregroundImage": "../shared/assets/nearby-logo.png"
       }
     },
     "web": {
-      "favicon": "./assets/images/nearby-logo.png"
+      "favicon": "../shared/assets/nearby-logo.png"
     }
   }
 }

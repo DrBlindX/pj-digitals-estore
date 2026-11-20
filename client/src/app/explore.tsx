@@ -1,3 +1,4 @@
+import { logo } from '../../../shared/brand';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
 import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
@@ -81,7 +82,7 @@ export default function TabTwoScreen() {
                 project.
               </ThemedText>
               <Image
-                source={require('../../assets/images/Neon Purple Marketplace Delivery Icon.png')}
+                source={logo}
                 style={styles.imageTutorial}
                 contentFit="contain"
                 accessibilityLabel="NearBy marketplace logo"

@@ -57,6 +57,7 @@ function ShopNavigation() {
       <Pressable accessibilityLabel="Open navigation menu" accessibilityRole="button" onPress={() => setMenuOpen(true)} style={menuStyles.menuButton}><MaterialCommunityIcons name="menu" size={25} color={C.cyan} /></Pressable>
     </View>
   </SafeAreaView> }}>
+    <Tabs.Screen name="hosted-auth-callback" options={{ href: null, headerShown: false }} />
     {tabs.map(({ route, title, icon }) => <Tabs.Screen key={route} name={route} options={{ title, tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name={icon} color={color} size={size} /> }} />)}
   </Tabs><RightMenu open={menuOpen} close={() => setMenuOpen(false)} shopName={account.shopName} active={pathname.split('/').filter(Boolean)[0] || 'index'} navigate={(route) => { setMenuOpen(false); router.navigate((route === 'index' ? '/' : `/${route}`) as Href); }} logoutError={logoutError} signingOut={signingOut} logout={() => { if (signingOut) return; setSigningOut(true); setLogoutError(''); void logout().then(() => setMenuOpen(false)).catch(() => setLogoutError('Unable to sign out. Please try again.')).finally(() => setSigningOut(false)); }} /><LowStockNotice /></ShopDataProvider>;
 }
