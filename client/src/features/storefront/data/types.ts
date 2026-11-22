@@ -1,4 +1,4 @@
-export type Category = 'Electronics' | 'Textiles' | 'Home Appliances' | 'Computer Items' | 'Bakery' | 'Other';
+export type Category = import('../../../../../shared/categories').ProductCategory | 'Other';
 export type CategoryFilter = 'All' | Category;
 export type StoreId = 'all' | 'vv' | 'sr' | 'textiles' | 'catalogue' | `shop:${string}`;
 export type DeliveryLocation = 'Thodupuzha' | 'Muttom';

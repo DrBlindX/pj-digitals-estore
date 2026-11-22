@@ -1,3 +1,4 @@
+import MobileNavigation from '../components/MobileNavigation';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { Animated, View } from 'react-native';
@@ -25,6 +26,6 @@ function AppShell() {
     <Animated.View style={{ flex: 1 }}>
       <ServerConnection><Stack screenOptions={{ headerShown: false }} /></ServerConnection>
     </Animated.View>
-    <LaunchIntro transition={transition} />
+    <MobileNavigation /><LaunchIntro transition={transition} />
   </View><NotificationToast /></SafeAreaView>;
 }

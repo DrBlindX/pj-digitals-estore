@@ -1,5 +1,5 @@
 import type { DeliveryLocation } from '../data/types';
-import { categories as catalogueCategories } from '../data/catalog';
+import { shopCategories as catalogueCategories } from '../../../../../shared/categories';
 
 export type PartnerRole = 'shop' | 'delivery';
 export const partnerCategories = catalogueCategories;

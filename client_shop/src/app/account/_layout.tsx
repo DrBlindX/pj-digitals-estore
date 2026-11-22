@@ -1,6 +1,6 @@
 import { Slot } from 'expo-router';
 import { useState } from 'react';
-import { Text } from 'react-native';
+import { Text, View, Platform } from 'react-native';
 import AccountSettings from '../../auth/AccountSettings';
 import { useUser } from '../../auth/clerkHooks';
 import { Page, useShopUI } from '../../components/ShopUI';
@@ -10,6 +10,7 @@ export default function AccountLayout() {
   const { user } = useUser();
   const { C } = useShopUI();
   const [error, setError] = useState('');
+  if (Platform.OS === 'android') return <View style={{ flex: 1 }}><AccountSettings /><Slot /></View>;
   return <Page title="Account settings" subtitle="Your Clerk profile and sign-in security." onRefresh={() => { setError(''); void user?.reload().catch(() => setError('Unable to refresh your account. Try again.')); }}>
     {error ? <Text style={{ color: C.red, marginBottom: 12 }}>{error}</Text> : null}
     <AccountSettings />

@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { installAndroidBack, mobileLogoSize, registerScreenBack } from './shared/mobile.ts';
+let handler, time=100, back=0, home=0, exit=0, notices=0, removed=false, can=false, root=true;
+const stop=installAndroidBack({subscribe:h=>{handler=h;return{remove:()=>removed=true}},canGoBack:()=>can,back:()=>back++,isHome:()=>root,home:()=>home++,notify:()=>notices++,exit:()=>exit++,now:()=>time});
+let intercepted=0; const unregister=registerScreenBack(()=>{intercepted++;return true;});handler();assert.equal(intercepted,1);assert.equal(exit,0);unregister();
+can=true;handler();assert.equal(back,1);assert.equal(exit,0);
+can=false;root=false;handler();assert.equal(home,1);assert.equal(exit,0);
+root=true;handler();assert.equal(notices,1);time+=1000;handler();assert.equal(exit,1);
+time+=3000;handler();time+=2500;handler();assert.equal(exit,1);assert.equal(notices,3);
+stop();assert.ok(removed);assert.equal(mobileLogoSize(160,393),56);assert.equal(mobileLogoSize(40,393),40);assert.equal(mobileLogoSize(160,1024),160);
+console.log('Mobile back behavior and logo size checks passed.');

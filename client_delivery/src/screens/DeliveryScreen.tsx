@@ -1,3 +1,5 @@
+import { registerScreenBack } from '../../../shared/mobile';
+import { router, usePathname, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -58,13 +60,16 @@ function profileFrom(value: DeliveryProfile): DeliveryProfile {
 }
 
 export default function DeliveryScreen() {
+  const pathname = usePathname();
   const { partner, getToken, logout } = useDeliveryAuth();
   const applicationKey = `delivery-application:${partner?.id ?? 'unknown'}`;
   const [mode, setMode] = useState<'light' | 'dark'>('light');
   const [themeReady, setThemeReady] = useState(false);
   const C = mode === 'dark' ? darkColors : lightColors;
   const s = useMemo(() => createStyles(C), [C]);
-  const [tab, setTab] = useState<Tab>('Home');
+  const [tab, setTabState] = useState<Tab>('Home');
+  const tabHistory = useRef<Tab[]>([]);
+  function setTab(next: Tab) { if (next !== tab) tabHistory.current.push(tab); setTabState(next); }
   const [drawerOpen, setDrawerOpen] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
   const [profile, setProfile] = useState<DeliveryProfile | null>(null);
@@ -81,6 +86,15 @@ export default function DeliveryScreen() {
   const [jobFilter, setJobFilter] = useState<JobFilter>('Active');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [notice, setNotice] = useState('');
+  useEffect(() => registerScreenBack(() => {
+    if (pathname !== '/') return false;
+    if (drawerOpen) { setDrawerOpen(false); return true; }
+    if (selectedJob) { setSelectedJob(null); return true; }
+    if (tab !== 'Home') { setTabState(tabHistory.current.pop() ?? 'Home'); return true; }
+    tabHistory.current = [];
+    return false;
+  }), [drawerOpen, selectedJob, tab, pathname]);
+
   const [form, setForm] = useState({ fullName: partner?.name ?? '', phone: '', vehicleType: 'bike', vehicleNumber: '', serviceLocations: 'Thodupuzha, Muttom' });
   const [profileDraft, setProfileDraft] = useState({ fullName: '', phone: '', vehicleType: '', vehicleNumber: '', serviceLocations: '' });
 
@@ -344,6 +358,7 @@ export default function DeliveryScreen() {
         <ScrollView style={s.drawerScroll} contentContainerStyle={s.drawerContent} bounces={false} alwaysBounceVertical={false} overScrollMode="never" contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false}>
           <View style={s.accountBox}><Text style={s.accountKicker}>NEARBY ACCOUNT</Text><Text style={s.accountName}>{partner?.name || 'Delivery partner'}</Text></View>
           {tabs.map(item => <TouchableOpacity key={item.name} onPress={() => selectTab(item.name)} style={[s.drawerItem, tab === item.name && s.drawerItemActive]} accessibilityRole="button" accessibilityState={{ selected: tab === item.name }}><Text style={[s.drawerItemIcon, tab === item.name && s.drawerItemSelected]}>{item.icon}</Text><Text style={[s.drawerItemText, tab === item.name && s.drawerItemSelected]}>{item.name}</Text></TouchableOpacity>)}
+          {(['feedback', 'problem'] as const).map(kind => <TouchableOpacity key={kind} accessibilityRole="button" style={s.drawerItem} onPress={() => { closeDrawer(); router.push({ pathname: '/support', params: { kind, mode } } as Href); }}><Text style={s.drawerItemIcon}>{kind === 'feedback' ? '✎' : '!'}</Text><Text style={s.drawerItemText}>{kind === 'feedback' ? 'Feedback' : 'Report a problem'}</Text></TouchableOpacity>)}
           <View style={s.divider} />
           <TouchableOpacity onPress={() => void toggleAvailability()} style={s.drawerItem}><Text style={s.drawerItemIcon}>◉</Text><Text style={s.drawerItemText}>Availability · {available ? 'Online' : 'Offline'}</Text></TouchableOpacity>
           <TouchableOpacity onPress={() => { closeDrawer(); void sendLocation(); }} style={s.drawerItem}><Text style={s.drawerItemIcon}>⌖</Text><Text style={s.drawerItemText}>Update location</Text></TouchableOpacity>

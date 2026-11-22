@@ -1,3 +1,4 @@
+import MobileNavigation from '../components/MobileNavigation';
 import AdminToast from '../components/AdminToast';
 import AdminClerkProvider from '../auth/AdminClerkProvider';
 import AdminAccess from '../auth/AdminAccess';
@@ -7,7 +8,7 @@ import { AdminLoadingScreen } from '../components/AdminLoadingScreen';
 import { AdminThemeProvider, useAdminTheme } from '../context/AdminTheme';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ServerConnection } from '../components/ServerConnection';
 
 export default function RootLayout() {
@@ -19,9 +20,9 @@ function AdminRoot() {
   const { mode } = useAdminTheme();
   const [loading, setLoading] = useState(true);
   const finishLoading = useCallback(() => setLoading(false), []);
-  return <SafeAreaProvider><StatusBar style={mode === 'dark' ? 'light' : 'dark'} /><View style={{ flex: 1 }}>
+  return <SafeAreaProvider><StatusBar style={mode === 'dark' ? 'light' : 'dark'} /><SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
     <View style={{ flex: 1 }} pointerEvents={loading ? 'none' : 'auto'} accessibilityElementsHidden={loading} importantForAccessibility={loading ? 'no-hide-descendants' : 'auto'}><ServerConnection><AdminAccess><Stack screenOptions={{ headerShown: false, title: 'NearBy Admin' }} /></AdminAccess></ServerConnection></View>
-    <AdminToast />
+    <MobileNavigation /><AdminToast />
     {loading ? <AdminLoadingScreen onFinish={finishLoading} /> : null}
-  </View></SafeAreaProvider>;
+  </SafeAreaView></SafeAreaProvider>;
 }

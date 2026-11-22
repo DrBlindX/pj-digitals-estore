@@ -3,13 +3,14 @@
     "userInterfaceStyle": "light",
     "scheme": "tdpstore-partner",
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "../shared/assets/nearby-logo.png"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "../shared/assets/nearby-logo.png"
     },
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "../shared/assets/nearby-logo.png",
     "plugins": [
       "expo-router",
       "expo-status-bar",
@@ -28,18 +29,20 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "@clerk/expo-native-components/app.plugin.js",
+      "./mobile-build.cjs"
     ],
     "slug": "tdpstore-shop",
     "version": "1.0.0",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png",
-        "foregroundImage": "./assets/android-icon-foreground.png"
-      }
+        "foregroundImage": "../shared/assets/nearby-logo.png"
+      },
+      "package": "com.nearby.shop",
+      "versionCode": 4
     },
-    "name": "TDP Store Shop"
+    "name": "NearBy Shop"
   }
 }

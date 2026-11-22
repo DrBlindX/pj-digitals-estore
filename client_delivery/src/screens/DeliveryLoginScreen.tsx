@@ -1,28 +1,15 @@
-import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/clerkHooks';
 import BrandLogo from '../components/BrandLogo';
 import { C } from '../theme';
-import { useHostedAuth } from '@clerk/expo/hosted-auth';
+import { useDeliveryAuth } from '../context/DeliveryAuthContext';
 
 export default function DeliveryLoginScreen() {
   const { isLoaded } = useAuth();
-  const { startHostedAuth } = useHostedAuth();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const pending = useRef(false);
-
-  async function signIn() {
-    if (!isLoaded || pending.current) return;
-    pending.current = true; setBusy(true); setError('');
-    try {
-      const result = await startHostedAuth({ mode: 'sign-in' });
-      if (!result.createdSessionId) setError(result.authSessionResult?.type === 'cancel' ? 'Sign-in cancelled. Try again when ready.' : 'Sign-in did not finish. Please try again.');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Unable to open secure sign-in. Try again.');
-    } finally { pending.current = false; setBusy(false); }
-  }
+  const { hostedSignIn, startHostedSignIn } = useDeliveryAuth();
+  const working = hostedSignIn.pending;
+  const signInError = hostedSignIn.error;
 
   return <SafeAreaView style={s.screen}>
     <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-start', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24 }}><View style={s.content}>
@@ -30,9 +17,9 @@ export default function DeliveryLoginScreen() {
       <Text style={s.brand}>NEARBY · DELIVERY</Text>
       <Text style={s.title}>Welcome back.</Text>
       <Text style={s.copy}>Sign in to your delivery account with Clerk.</Text>
-      {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isLoaded || busy, busy }} disabled={!isLoaded || busy} onPress={() => void signIn()} style={[s.button, (!isLoaded || busy) && { opacity: 0.65 }]}>
-        {busy ? <ActivityIndicator color={C.onPrimary} /> : <Text style={s.buttonText}>{isLoaded ? 'Continue with Clerk' : 'Loading secure sign-in…'}</Text>}
+      {signInError ? <Text accessibilityRole="alert" style={s.error}>{signInError}</Text> : null}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: !isLoaded || working, busy: working }} disabled={!isLoaded || working} onPress={() => void startHostedSignIn()} style={[s.button, (!isLoaded || working) && { opacity: 0.65 }]}>
+        {working ? <ActivityIndicator color={C.onPrimary} /> : <Text style={s.buttonText}>{isLoaded ? 'Continue with Clerk' : 'Loading secure sign-in…'}</Text>}
       </Pressable>
     </View></ScrollView>
   </SafeAreaView>;

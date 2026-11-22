@@ -1,3 +1,4 @@
+import { categoriesForShop } from '../../../shared/categories';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShopAuth } from '../context/ShopAuthContext';
 import { getShopProduct, listShopProducts, removeShopProduct, saveShopProduct, setShopStock } from '../services/shopProducts';
@@ -48,7 +49,7 @@ export function useShopProducts() {
   return {
     products: current?.products ?? [], loading: !!owner && (!current || current.loading), busy,
     error: current?.error ?? '', reload,
-    addProduct: async (input: NewProduct) => { if (!account?.category) throw new Error('Your shop category is not assigned. Contact the admin.'); await mutate(token => saveShopProduct(input, account.category!, token)); },
+    addProduct: async (input: NewProduct) => { if (!account?.category) throw new Error('Your shop category is not assigned. Contact the admin.'); const selected = input.category ?? account.category; if (!categoriesForShop(account.category).includes(selected)) throw new Error('Choose a category available for your shop.'); await mutate(token => saveShopProduct(input, selected, token)); },
     updateProduct: async (id: string, input: ProductUpdate) => { if (!current?.products.some(product => product.id === id)) throw new Error('Reload this product first.'); await mutate(token => saveShopProduct(input, '', token, id)); },
     changeStock: async (id: string, amount: number) => { await mutate(token => setShopStock(id, amount, token)); },
     deleteProduct: async (id: string) => { await mutate(async token => { await removeShopProduct(id, token); return id; }); },

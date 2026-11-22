@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useState, type Props
 import { useAuth, useClerk, useUser } from '../auth/clerkHooks';
 import { getShopProfile, type ShopProfile } from '../services/shopProfile';
 
-export const shopCategories = ['Electronics', 'Textiles', 'Home Appliances', 'Computer Items', 'Bakery'] as const;
+import { shopCategories } from '../../../shared/categories';
+export { shopCategories };
 export type ShopCategory = typeof shopCategories[number];
 type Account = { id: string; profileName: string; shopName: string; email: string; category: ShopCategory | null; shop: ShopProfile | null };
 type Auth = { account: Account | null; ready: boolean; getToken: () => Promise<string | null>; logout: () => Promise<void>; shopLoading: boolean; shopError: string; refreshShop: () => void };

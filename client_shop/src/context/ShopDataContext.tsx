@@ -16,7 +16,7 @@ export type Order = { id: string; number: string; customer: string; items: numbe
 export type DeliveryStatus = 'Awaiting pickup' | 'Picked up' | 'Out for delivery' | 'Delivered' | 'Failed' | 'Rejected' | 'Cancelled' | 'Status unavailable';
 export type Delivery = { id: string; orderId: string; orderNumber: string; customer: string; address: string; items: number; total: number; status: DeliveryStatus; driver: string; window: string };
 export type TeamMember = { id: string; name: string; email: string; role: string; initials: string };
-export type NewProduct = Pick<Product, 'name' | 'description' | 'price' | 'stock'> & { newImages: ProductImage[]; images?: string[] };
+export type NewProduct = Pick<Product, 'name' | 'description' | 'price' | 'stock'> & { newImages: ProductImage[]; category?: string; images?: string[] };
 export type ProductUpdate = Partial<Omit<Product, 'id' | 'category'>> & { newImages?: ProductImage[] };
 export type NewTeamMember = Pick<TeamMember, 'name' | 'email' | 'role'>;
 

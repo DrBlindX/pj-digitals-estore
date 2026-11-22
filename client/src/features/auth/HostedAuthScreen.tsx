@@ -21,14 +21,15 @@ export default function HostedAuthScreen({ mode }: { mode: 'login' | 'signup' })
   const opened = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const checkout = returnTo === 'payment';
+  const support = returnTo === 'support';
   useEffect(() => {
-    if (session?.status === 'active') router.dismissTo(checkout ? { pathname: '/', params: { checkout: 'payment' } } : '/');
-  }, [session?.status, checkout]);
+    if (session?.status === 'active') router.dismissTo(checkout ? { pathname: '/', params: { checkout: 'payment' } } : support ? '/support' : '/');
+  }, [session?.status, checkout, support]);
 
   async function openClerk() {
     if (pending.current) return;
     pending.current = true; setBusy(true); setMessage('');
-    beginHostedAuthFlow(checkout);
+    beginHostedAuthFlow(checkout, support);
     try {
       const result = await startHostedAuth({ mode: mode === 'signup' ? 'sign-up' : 'sign-in' });
       const error = result.createdSessionId ? '' : result.authSessionResult?.type === 'cancel' || result.authSessionResult?.type === 'dismiss'

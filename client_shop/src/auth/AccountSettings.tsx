@@ -32,7 +32,7 @@ export default function AccountSettings() {
     } catch (cause) { if (mounted.current) setMessage(cause instanceof Error ? cause.message : 'Unable to open account settings.'); }
     finally { pending.current = false; if (mounted.current) setBusy(false); }
   }
-  if (!isLoaded) return <Text style={S.small}>Loading account…</Text>;
+  if (!isLoaded) return <Text style={S.small}>Loading accountâ€¦</Text>;
   if (!user) return <Text style={S.small}>Sign in to manage your account.</Text>;
   return <Card>
     <View style={{ gap: 16 }}>
@@ -40,7 +40,7 @@ export default function AccountSettings() {
       <Text style={S.title}>{user.fullName || user.username || 'Your account'}</Text>
       <Text style={S.small}>{user.primaryEmailAddress?.emailAddress}</Text>
       <Text style={[S.small, { lineHeight: 20 }]}>Manage your photo, name, email and sign-in security in Clerk. Settings open in the browser; you may need to sign in again.</Text>
-      <Button disabled={busy} label={busy ? 'Opening settings…' : 'Manage profile & security'} onPress={() => void manage()} />
+      <Button disabled={busy} label={busy ? 'Opening settingsâ€¦' : 'Manage profile & security'} onPress={() => void manage()} />
       <Button secondary label="Refresh profile" onPress={() => { setMessage(''); void refresh(); }} />
       {message ? <Text accessibilityLiveRegion="polite" style={{ color: C.red, fontSize: 12, lineHeight: 20 }}>{message}</Text> : null}
     </View>

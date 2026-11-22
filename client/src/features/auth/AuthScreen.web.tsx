@@ -7,8 +7,8 @@ export default function AuthScreen({ mode }: { mode: 'login' | 'signup' }) {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const { palette } = useStoreTheme();
   const checkout = returnTo === 'payment';
-  const destination = checkout ? '/?checkout=payment' : '/';
-  const suffix = checkout ? '?returnTo=payment' : '';
+  const destination = checkout ? '/?checkout=payment' : returnTo === 'support' ? '/support' : '/';
+  const suffix = checkout ? '?returnTo=payment' : returnTo === 'support' ? '?returnTo=support' : '';
   const appearance = {
     variables: { colorPrimary: palette.primary },
     elements: {
@@ -32,7 +32,7 @@ export default function AuthScreen({ mode }: { mode: 'login' | 'signup' }) {
     {mode === 'login'
       ? <SignIn routing="hash" appearance={appearance} fallback={fallback} signUpUrl={`/signup${suffix}`} forceRedirectUrl={destination} signUpForceRedirectUrl={destination} />
       : <SignUp routing="hash" appearance={appearance} fallback={fallback} signInUrl={`/login${suffix}`} forceRedirectUrl={destination} signInForceRedirectUrl={destination} />}
-    <Link href={{ pathname: mode === 'login' ? '/signup' : '/login', params: checkout ? { returnTo: 'payment' } : {} }} style={{ color: palette.primaryText, fontSize: 13, padding: 8 }}>
+    <Link href={{ pathname: mode === 'login' ? '/signup' : '/login', params: checkout ? { returnTo: 'payment' } : returnTo === 'support' ? { returnTo: 'support' } : {} }} style={{ color: palette.primaryText, fontSize: 13, padding: 8 }}>
       {mode === 'login' ? 'New to NearBy? Create an account' : 'Already have an account? Sign in'}
     </Link>
   </main>;

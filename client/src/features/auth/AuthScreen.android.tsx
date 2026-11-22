@@ -13,12 +13,13 @@ export default function AuthScreen({ mode }: { mode: 'login' | 'signup' }) {
   const { session } = useSession();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const checkout = returnTo === 'payment';
+  const support = returnTo === 'support';
   useEffect(() => {
     // Keep native verification/session tasks mounted until fully complete.
     if (NativeAuthView && session?.status === 'active') {
-      router.dismissTo(checkout ? { pathname: '/', params: { checkout: 'payment' } } : '/');
+      router.dismissTo(checkout ? { pathname: '/', params: { checkout: 'payment' } } : support ? '/support' : '/');
     }
-  }, [session?.status, checkout]);
+  }, [session?.status, checkout, support]);
   const back = () => router.canGoBack() ? router.back() : router.replace('/');
 
   if (!NativeAuthView) return <HostedAuthScreen mode={mode} />;

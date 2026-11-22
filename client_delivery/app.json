@@ -6,15 +6,17 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "icon": "./assets/images/nearby-logo.png",
+    "icon": "../shared/assets/nearby-logo.png",
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F7FA",
-        "foregroundImage": "./assets/images/nearby-logo.png"
-      }
+        "foregroundImage": "../shared/assets/nearby-logo.png"
+      },
+      "package": "com.nearby.delivery",
+      "versionCode": 4
     },
     "web": {
-      "favicon": "./assets/images/nearby-logo.png"
+      "favicon": "../shared/assets/nearby-logo.png"
     },
     "plugins": [
       "expo-router",
@@ -25,10 +27,15 @@
         {
           "appleSignIn": false
         }
-      ]
+      ],
+      "@clerk/expo-native-components/app.plugin.js",
+      "./mobile-build.cjs"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "ios": {
+      "icon": "../shared/assets/nearby-logo.png"
     }
   }
 }

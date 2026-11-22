@@ -1,0 +1,6 @@
+// Use an installed JDK for the daemon; do not generate cross-platform download URLs.
+gradle.projectsEvaluated {
+    rootProject.tasks.named('updateDaemonJvm') {
+        toolchainPlatforms.set([])
+    }
+}
